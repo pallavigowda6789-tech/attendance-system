@@ -1,12 +1,14 @@
 package com.example.attendance_system.controller;
 
 
+import com.example.attendance_system.entity.Attendance;
 import com.example.attendance_system.service.AttendanceService;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
+@RequestMapping("/api/attendance")
 public class AttendanceController {
 
     private final AttendanceService service;
@@ -15,14 +17,13 @@ public class AttendanceController {
         this.service = service;
     }
 
-    @GetMapping("/")
-    public String home() {
-        return "Welcome to Attendance System";
+    @PostMapping("/{username}")
+    public Attendance markAttendance(@PathVariable String username) {
+        return service.markAttendance(username);
     }
 
-    @PostMapping("/attendance")
-    public String markAttendance(@AuthenticationPrincipal OidcUser user) {
-        service.markAttendance(user.getEmail());
-        return "Attendance marked for " + user.getEmail();
+    @GetMapping
+    public List<Attendance> getAll() {
+        return service.getAllAttendance();
     }
 }

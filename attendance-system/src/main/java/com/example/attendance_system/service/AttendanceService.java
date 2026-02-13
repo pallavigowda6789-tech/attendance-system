@@ -5,6 +5,7 @@ import com.example.attendance_system.entity.Attendance;
 import com.example.attendance_system.repository.AttendanceRepository;
 import org.springframework.stereotype.Service;
 import java.time.LocalDate;
+import java.util.List;
 
 
 @Service
@@ -22,5 +23,9 @@ public class AttendanceService {
         attendance.setDate(LocalDate.now());
         attendance.setPresent(true);
         return repo.save(attendance);
+    }
+
+    public List<Attendance> getAllAttendance() {
+        return repo.findAll();
     }
 }
