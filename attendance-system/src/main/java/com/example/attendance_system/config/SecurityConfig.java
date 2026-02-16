@@ -41,6 +41,9 @@ public class SecurityConfig {
                         .logoutSuccessUrl("/login?logout")
                         .permitAll()
                 )
+                .exceptionHandling(ex -> ex
+                        .accessDeniedPage("/error")
+                )
                 .csrf(AbstractHttpConfigurer::disable);
 
         return http.build();
