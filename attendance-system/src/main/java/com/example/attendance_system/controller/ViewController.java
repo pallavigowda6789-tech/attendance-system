@@ -1,6 +1,5 @@
 package com.example.attendance_system.controller;
 
-
 import com.example.attendance_system.service.AttendanceService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -38,4 +37,3 @@ public class ViewController {
         return "redirect:/dashboard";
     }
 }
-
