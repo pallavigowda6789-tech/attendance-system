@@ -1,47 +1,34 @@
-package com.example.attendance_system.entity;
+package com.example.attendance_system.dto;
 
-import jakarta.persistence.*;
-import java.time.LocalDateTime;
+import com.example.attendance_system.entity.AuthProvider;
+import com.example.attendance_system.entity.Role;
 
-@Entity
-@Table(name = "users")
-public class User {
+public class UserDTO {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @Column(nullable = false, unique = true)
     private String username;
-
-    @Column(nullable = false, unique = true)
-
     private String email;
-
-    private String password;
-
     private String firstName;
-
     private String lastName;
-
-    @Enumerated(EnumType.STRING)
     private Role role;
-
-    private boolean enabled= true;
-
-    private LocalDateTime createdAt;
-
-
-    @Enumerated(EnumType.STRING)
+    private boolean enabled;
     private AuthProvider authProvider;
 
-    private String providerId;
+    // Constructors
+    public UserDTO() {}
 
-    @PrePersist
-    public void prePersist() {
-        this.createdAt = LocalDateTime.now();
+    public UserDTO(Long id, String username, String email, String firstName, String lastName, Role role, boolean enabled, AuthProvider authProvider) {
+        this.id = id;
+        this.username = username;
+        this.email = email;
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.role = role;
+        this.enabled = enabled;
+        this.authProvider = authProvider;
     }
 
+    // Getters and Setters
     public Long getId() {
         return id;
     }
@@ -64,14 +51,6 @@ public class User {
 
     public void setEmail(String email) {
         this.email = email;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
     }
 
     public String getFirstName() {
@@ -106,14 +85,6 @@ public class User {
         this.enabled = enabled;
     }
 
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
     public AuthProvider getAuthProvider() {
         return authProvider;
     }
@@ -121,13 +92,4 @@ public class User {
     public void setAuthProvider(AuthProvider authProvider) {
         this.authProvider = authProvider;
     }
-
-    public String getProviderId() {
-        return providerId;
-    }
-
-    public void setProviderId(String providerId) {
-        this.providerId = providerId;
-    }
-
 }

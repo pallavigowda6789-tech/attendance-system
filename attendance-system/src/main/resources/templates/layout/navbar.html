@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<body>
+    <!-- Navbar Fragment -->
+    <nav th:fragment="navbar" class="navbar">
+        <div class="navbar-container">
+            <!-- Brand/Logo -->
+            <a href="/" class="navbar-brand" th:href="@{/}">
+                <span>📋</span>
+                <span>AttendanceSystem</span>
+            </a>
+            
+            <!-- Mobile Menu Toggle -->
+            <button class="mobile-toggle" id="mobile-toggle" aria-label="Toggle navigation">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            
+            <!-- Navigation Links -->
+            <ul class="navbar-nav" id="navbar-nav">
+                <!-- Public Links (Always visible) -->
+                <li sec:authorize="!isAuthenticated()">
+                    <a href="/" class="nav-link" th:href="@{/}">
+                        Home
+                    </a>
+                </li>
+                
+                <!-- Authenticated User Links -->
+                <li sec:authorize="isAuthenticated()">
+                    <a href="/dashboard" class="nav-link" th:href="@{/dashboard}">
+                        Dashboard
+                    </a>
+                </li>
+                
+                <li sec:authorize="isAuthenticated()">
+                    <a href="/attendance" class="nav-link" th:href="@{/attendance}">
+                        My Attendance
+                    </a>
+                </li>
+                
+                <li sec:authorize="isAuthenticated()">
+                    <a href="/profile" class="nav-link" th:href="@{/profile}">
+                        Profile
+                    </a>
+                </li>
+                
+                <!-- Admin Links -->
+                <li sec:authorize="hasRole('ADMIN')">
+                    <a href="/admin/users" class="nav-link" th:href="@{/admin/users}">
+                        <span>Admin</span>
+                        <span class="admin-badge">ADMIN</span>
+                    </a>
+                </li>
+            </ul>
+            
+            <!-- User Dropdown (Right Side) -->
+            <div class="navbar-user">
+                <!-- Guest User (Not Authenticated) -->
+                <div sec:authorize="!isAuthenticated()">
+                    <a href="/login" class="btn btn-primary btn-sm" th:href="@{/login}">Login</a>
+                </div>
+                
+                <!-- Authenticated User -->
+                <div sec:authorize="isAuthenticated()">
+                    <div class="user-button" id="user-dropdown-btn">
+                        <div class="user-avatar" th:text="${#authentication != null ? #strings.substring(#authentication.name, 0, 1).toUpperCase() : 'U'}">U</div>
+                        <span class="user-name" th:text="${#authentication != null ? #authentication.name : 'User'}">User</span>
+                        <svg class="dropdown-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </div>
+                    
+                    <!-- Dropdown Menu -->
+                    <div class="dropdown-menu" id="user-dropdown-menu">
+                        <a href="/profile" class="dropdown-item" th:href="@{/profile}">
+                            <span>👤</span>
+                            <span>My Profile</span>
+                        </a>
+                        <a href="/attendance" class="dropdown-item" th:href="@{/attendance}">
+                            <span>📊</span>
+                            <span>My Attendance</span>
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        <a href="/logout" class="dropdown-item" th:href="@{/logout}">
+                            <span>🚪</span>
+                            <span>Logout</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+</body>
+</html>

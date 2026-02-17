@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="_csrf" th:content="${_csrf?.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf?.headerName}"/>
+    <title>User Management - Admin</title>
+    
+    <!-- CSS Files -->
+    <link rel="stylesheet" th:href="@{/css/variables.css}">
+    <link rel="stylesheet" th:href="@{/css/reset.css}">
+    <link rel="stylesheet" th:href="@{/css/global.css}">
+    <link rel="stylesheet" th:href="@{/css/components.css}">
+    <link rel="stylesheet" th:href="@{/css/navbar.css}">
+    <link rel="stylesheet" th:href="@{/css/admin.css}">
+</head>
+<body>
+    <!-- Navbar -->
+    <div th:replace="~{layout/navbar :: navbar}"></div>
+    
+    <!-- Main Content -->
+    <main class="content-wrapper">
+        <div class="container">
+            <!-- Header -->
+            <div class="admin-header">
+                <h1>👥 User Management</h1>
+                <p>Manage user accounts and permissions</p>
+            </div>
+            
+            <!-- Toolbar -->
+            <div class="admin-toolbar">
+                <div class="search-box">
+                    <span class="search-icon">🔍</span>
+                    <input 
+                        type="text" 
+                        id="search-users" 
+                        class="form-control" 
+                        placeholder="Search users by name, email, or username..."
+                    >
+                </div>
+                <button class="btn btn-primary" id="add-user-btn">
+                    <span>+</span>
+                    <span>Add User</span>
+                </button>
+            </div>
+            
+            <!-- Users Table -->
+            <div class="card">
+                <div class="card-body">
+                    <div class="table-wrapper">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th>Role</th>
+                                    <th>Status</th>
+                                    <th>Created</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="users-tbody">
+                                <tr>
+                                    <td colspan="7" class="no-data">Loading...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Pagination -->
+                    <div class="pagination">
+                        <button id="prev-page">Previous</button>
+                        <span class="page-info" id="page-info">Page 1 of 1</span>
+                        <button id="next-page">Next</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <!-- User Modal -->
+    <div id="user-modal" class="modal-backdrop hidden" style="display: none;">
+        <div class="modal user-modal">
+            <div class="modal-header">
+                <h3 id="modal-title">Add User</h3>
+                <button class="btn btn-sm" onclick="closeUserModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <form id="user-form">
+                    <input type="hidden" id="user-id">
+                    <div class="form-group">
+                        <label for="user-firstName" class="form-label required">First Name</label>
+                        <input type="text" id="user-firstName" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="user-lastName" class="form-label required">Last Name</label>
+                        <input type="text" id="user-lastName" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="user-email" class="form-label required">Email</label>
+                        <input type="email" id="user-email" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="user-username" class="form-label required">Username</label>
+                        <input type="text" id="user-username" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="user-role" class="form-label required">Role</label>
+                        <select id="user-role" class="form-control" required>
+                            <option value="USER">User</option>
+                            <option value="ADMIN">Admin</option>
+                            <option value="MANAGER">Manager</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <div class="checkbox-wrapper">
+                            <input type="checkbox" id="user-enabled" class="checkbox" checked>
+                            <label for="user-enabled">Account Enabled</label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeUserModal()">Cancel</button>
+                <button type="submit" form="user-form" class="btn btn-primary">Save</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Toast Container -->
+    <div id="toast-container" class="toast-container"></div>
+    
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="modal-backdrop hidden" style="display: none;">
+        <div class="spinner"></div>
+    </div>
+    
+    <!-- JavaScript -->
+    <script th:src="@{/js/main.js}"></script>
+    <script th:src="@{/js/ajax-helper.js}"></script>
+    <script th:src="@{/js/admin.js}"></script>
+</body>
+</html>

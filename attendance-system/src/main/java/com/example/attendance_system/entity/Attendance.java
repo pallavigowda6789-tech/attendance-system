@@ -2,6 +2,7 @@ package com.example.attendance_system.entity;
 
 import jakarta.persistence.*;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 public class Attendance {
@@ -10,9 +11,15 @@ public class Attendance {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String username;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+
     private LocalDate date;
     private boolean present;
+    
+    @Column(name = "timestamp")
+    private LocalDateTime timestamp;
 
     // getters and setters
 
@@ -24,12 +31,12 @@ public class Attendance {
         this.id = id;
     }
 
-    public String getUsername() {
-        return username;
+    public User getUser() {
+        return user;
     }
 
-    public void setUsername(String username) {
-        this.username = username;
+    public void setUser(User user) {
+        this.user = user;
     }
 
     public LocalDate getDate() {
@@ -46,6 +53,21 @@ public class Attendance {
 
     public void setPresent(boolean present) {
         this.present = present;
+    }
+
+    public LocalDateTime getTimestamp() {
+        return timestamp;
+    }
+
+    public void setTimestamp(LocalDateTime timestamp) {
+        this.timestamp = timestamp;
+    }
+
+    @PrePersist
+    protected void onCreate() {
+        if (timestamp == null) {
+            timestamp = LocalDateTime.now();
+        }
     }
 
 }

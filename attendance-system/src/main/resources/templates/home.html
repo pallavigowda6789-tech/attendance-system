@@ -23,8 +23,8 @@
                 Perfect for teams, schools, and organizations.
             </p>
             <div class="hero-actions">
-                <a href="/login" th:href="@{/login}" class="btn btn-primary btn-lg hero-btn">
-                    Get Started
+                <a href="/dashboard" th:href="@{/dashboard}" class="btn btn-primary btn-lg hero-btn">
+                    Go to Dashboard
                 </a>
                 <a href="/register" th:href="@{/register}" class="btn btn-outline btn-lg hero-btn" style="background: rgba(255,255,255,0.2); border-color: white; color: white;">
                     Sign Up Free
@@ -107,7 +107,7 @@
                 our system scales with your needs and provides the tools you need to succeed.
             </p>
             <div style="margin-top: var(--spacing-xl);">
-                <a href="/register" th:href="@{/register}" class="btn btn-primary btn-lg">
+                <a href="/dashboard" th:href="@{/dashboard}" class="btn btn-primary btn-lg">
                     Start Tracking Today
                 </a>
             </div>
@@ -117,6 +117,9 @@
     <!-- Footer -->
     <footer class="home-footer">
         <p>&copy; 2024 Attendance System. All rights reserved.</p>
+        <p style="color: var(--warning); font-size: 0.875rem; margin-top: 0.5rem;">
+            🔓 Development Mode: Security Disabled for Testing
+        </p>
     </footer>
     
     <!-- JavaScript -->

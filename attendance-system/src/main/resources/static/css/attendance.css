@@ -1,0 +1,134 @@
+/* Attendance Page Styles */
+
+.attendance-header {
+    background: linear-gradient(135deg, var(--secondary-color), var(--success-color));
+    color: var(--text-inverse);
+    padding: var(--spacing-xl);
+    border-radius: var(--radius-lg);
+    margin-bottom: var(--spacing-xl);
+}
+
+.attendance-header h1 {
+    color: var(--text-inverse);
+    margin-bottom: var(--spacing-sm);
+}
+
+/* Calendar View */
+.calendar-container {
+    background: var(--bg-primary);
+    padding: var(--spacing-lg);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    margin-bottom: var(--spacing-xl);
+}
+
+.calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-lg);
+}
+
+.calendar-nav {
+    display: flex;
+    gap: var(--spacing-sm);
+}
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: var(--spacing-sm);
+}
+
+.calendar-day-header {
+    text-align: center;
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-secondary);
+    padding: var(--spacing-sm);
+    font-size: var(--font-size-sm);
+}
+
+.calendar-day {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all var(--transition-base);
+    position: relative;
+}
+
+.calendar-day:hover {
+    background: var(--bg-secondary);
+}
+
+.calendar-day.today {
+    border-color: var(--primary-color);
+    font-weight: var(--font-weight-bold);
+}
+
+.calendar-day.present {
+    background-color: var(--success-light);
+    color: var(--success-color);
+    font-weight: var(--font-weight-medium);
+}
+
+.calendar-day.absent {
+    background-color: var(--error-light);
+    color: var(--error-color);
+    font-weight: var(--font-weight-medium);
+}
+
+.calendar-day.future {
+    background-color: #f0f0f0;
+    color: #999;
+    cursor: not-allowed;
+}
+
+.calendar-day.disabled {
+    color: var(--text-tertiary);
+    cursor: not-allowed;
+    background: var(--bg-secondary);
+}
+
+/* Mark Attendance Form */
+.mark-attendance-card {
+    background: var(--bg-primary);
+    padding: var(--spacing-lg);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    margin-bottom: var(--spacing-xl);
+}
+
+.attendance-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.current-status {
+    padding: var(--spacing-md);
+    background: var(--bg-secondary);
+    border-radius: var(--radius);
+    border-left: 4px solid var(--info-color);
+}
+
+/* Export Button */
+.export-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .calendar-grid {
+        gap: 2px;
+    }
+    
+    .calendar-day {
+        font-size: var(--font-size-sm);
+    }
+}

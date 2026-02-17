@@ -34,38 +34,26 @@
             <div class="stats-grid">
                 <div class="stat-card primary">
                     <div class="stat-icon">📅</div>
-                    <div class="stat-value" id="total-days">45</div>
+                    <div class="stat-value" id="total-days" th:text="${stats.totalDays}">0</div>
                     <div class="stat-label">Total Days</div>
-                    <div class="stat-change positive">
-                        <span>↑ 5 from last month</span>
-                    </div>
                 </div>
                 
                 <div class="stat-card success">
                     <div class="stat-icon">✓</div>
-                    <div class="stat-value" id="present-days">38</div>
+                    <div class="stat-value" id="present-days" th:text="${stats.presentDays}">0</div>
                     <div class="stat-label">Present Days</div>
-                    <div class="stat-change positive">
-                        <span>↑ 3 from last month</span>
-                    </div>
                 </div>
                 
                 <div class="stat-card error">
                     <div class="stat-icon">✗</div>
-                    <div class="stat-value" id="absent-days">7</div>
+                    <div class="stat-value" id="absent-days" th:text="${stats.absentDays}">0</div>
                     <div class="stat-label">Absent Days</div>
-                    <div class="stat-change negative">
-                        <span>↑ 2 from last month</span>
-                    </div>
                 </div>
                 
                 <div class="stat-card info">
                     <div class="stat-icon">📊</div>
-                    <div class="stat-value" id="attendance-percentage">84%</div>
+                    <div class="stat-value" id="attendance-percentage" th:text="${stats.attendancePercentage + '%'}">0%</div>
                     <div class="stat-label">Attendance Rate</div>
-                    <div class="stat-change positive">
-                        <span>↑ 2% from last month</span>
-                    </div>
                 </div>
             </div>
             
@@ -141,6 +129,7 @@
     </div>
     
     <!-- JavaScript -->
+    <script th:src="@{/js/logger.js}"></script>
     <script th:src="@{/js/main.js}"></script>
     <script th:src="@{/js/ajax-helper.js}"></script>
     <script th:src="@{/js/dashboard.js}"></script>

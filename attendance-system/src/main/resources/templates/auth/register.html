@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="_csrf" th:content="${_csrf?.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf?.headerName}"/>
+    <title>Register - Attendance System</title>
+    
+    <!-- CSS Files -->
+    <link rel="stylesheet" th:href="@{/css/variables.css}">
+    <link rel="stylesheet" th:href="@{/css/reset.css}">
+    <link rel="stylesheet" th:href="@{/css/global.css}">
+    <link rel="stylesheet" th:href="@{/css/components.css}">
+    <link rel="stylesheet" th:href="@{/css/auth.css}">
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-card">
+            <!-- Header -->
+            <div class="auth-header">
+                <div class="auth-logo">📋</div>
+                <h1 class="auth-title">Create Account</h1>
+                <p class="auth-subtitle">Sign up to get started with Attendance System</p>
+            </div>
+            
+            <!-- Error Alert -->
+            <div class="alert alert-error auth-alert hidden" id="error-alert"></div>
+            
+            <!-- Success Alert -->
+            <div class="alert alert-success auth-alert hidden" id="success-alert"></div>
+            
+            <!-- Register Form -->
+            <form class="auth-form" th:action="@{/register}" method="post" id="register-form">
+                <!-- CSRF Token -->
+                <input type="hidden" th:name="${_csrf?.parameterName}" th:value="${_csrf?.token}" />
+                
+                <!-- First Name & Last Name -->
+                <div class="grid grid-cols-2 gap-md">
+                    <div class="form-group">
+                        <label for="firstName" class="form-label required">First Name</label>
+                        <input 
+                            type="text" 
+                            id="firstName" 
+                            name="firstName" 
+                            class="form-control" 
+                            placeholder="John"
+                            required 
+                            autofocus
+                        />
+                        <div class="form-error" id="firstName-error"></div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="lastName" class="form-label required">Last Name</label>
+                        <input 
+                            type="text" 
+                            id="lastName" 
+                            name="lastName" 
+                            class="form-control" 
+                            placeholder="Doe"
+                            required
+                        />
+                        <div class="form-error" id="lastName-error"></div>
+                    </div>
+                </div>
+                
+                <!-- Username -->
+                <div class="form-group">
+                    <label for="username" class="form-label required">Username</label>
+                    <input 
+                        type="text" 
+                        id="username" 
+                        name="username" 
+                        class="form-control" 
+                        placeholder="johndoe"
+                        required
+                        pattern="[a-zA-Z0-9_]+"
+                        minlength="3"
+                    />
+                    <div class="form-help">Username must be 3-20 characters (letters, numbers, underscore)</div>
+                    <div class="form-error" id="username-error"></div>
+                </div>
+                
+                <!-- Email -->
+                <div class="form-group">
+                    <label for="email" class="form-label required">Email Address</label>
+                    <input 
+                        type="email" 
+                        id="email" 
+                        name="email" 
+                        class="form-control" 
+                        placeholder="john.doe@example.com"
+                        required
+                    />
+                    <div class="form-error" id="email-error"></div>
+                </div>
+                
+                <!-- Password -->
+                <div class="form-group">
+                    <label for="password" class="form-label required">Password</label>
+                    <div class="password-wrapper">
+                        <input 
+                            type="password" 
+                            id="password" 
+                            name="password" 
+                            class="form-control" 
+                            placeholder="Enter a strong password"
+                            required
+                            minlength="8"
+                        />
+                        <button type="button" class="password-toggle" id="password-toggle" aria-label="Toggle password visibility">
+                            <span id="password-toggle-icon">👁️</span>
+                        </button>
+                    </div>
+                    <div class="password-strength">
+                        <div class="password-strength-bar" id="password-strength-bar"></div>
+                    </div>
+                    <div class="password-strength-text" id="password-strength-text">Password strength: <span id="strength-label">-</span></div>
+                    <div class="form-error" id="password-error"></div>
+                </div>
+                
+                <!-- Confirm Password -->
+                <div class="form-group">
+                    <label for="confirmPassword" class="form-label required">Confirm Password</label>
+                    <div class="password-wrapper">
+                        <input 
+                            type="password" 
+                            id="confirmPassword" 
+                            name="confirmPassword" 
+                            class="form-control" 
+                            placeholder="Re-enter your password"
+                            required
+                        />
+                        <button type="button" class="password-toggle" id="confirm-password-toggle" aria-label="Toggle password visibility">
+                            <span id="confirm-password-toggle-icon">👁️</span>
+                        </button>
+                    </div>
+                    <div class="form-error" id="confirmPassword-error"></div>
+                </div>
+                
+                <!-- Terms & Conditions -->
+                <div class="form-group">
+                    <div class="checkbox-wrapper terms-checkbox">
+                        <input type="checkbox" id="terms" name="terms" class="checkbox" required>
+                        <label for="terms">
+                            I agree to the <a href="/terms" target="_blank">Terms & Conditions</a> and <a href="/privacy" target="_blank">Privacy Policy</a>
+                        </label>
+                    </div>
+                    <div class="form-error" id="terms-error"></div>
+                </div>
+                
+                <!-- Submit Button -->
+                <button type="submit" class="btn btn-primary btn-block btn-lg" id="register-btn">
+                    Create Account
+                </button>
+            </form>
+            
+            <!-- Login Link -->
+            <div class="auth-footer">
+                Already have an account? <a href="/login" th:href="@{/login}">Sign in</a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- JavaScript -->
+    <script th:src="@{/js/main.js}"></script>
+    <script th:src="@{/js/ajax-helper.js}"></script>
+    <script th:src="@{/js/validation.js}"></script>
+    <script>
+        // Password toggle
+        document.getElementById('password-toggle')?.addEventListener('click', function() {
+            const passwordInput = document.getElementById('password');
+            const icon = document.getElementById('password-toggle-icon');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                icon.textContent = '🙈';
+            } else {
+                passwordInput.type = 'password';
+                icon.textContent = '👁️';
+            }
+        });
+        
+        document.getElementById('confirm-password-toggle')?.addEventListener('click', function() {
+            const passwordInput = document.getElementById('confirmPassword');
+            const icon = document.getElementById('confirm-password-toggle-icon');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                icon.textContent = '🙈';
+            } else {
+                passwordInput.type = 'password';
+                icon.textContent = '👁️';
+            }
+        });
+        
+        // Password strength indicator
+        document.getElementById('password')?.addEventListener('input', function(e) {
+            const password = e.target.value;
+            const strengthBar = document.getElementById('password-strength-bar');
+            const strengthLabel = document.getElementById('strength-label');
+            
+            const strength = calculatePasswordStrength(password);
+            
+            // Remove all strength classes
+            strengthBar.classList.remove('weak', 'medium', 'strong');
+            
+            if (password.length === 0) {
+                strengthLabel.textContent = '-';
+                return;
+            }
+            
+            if (strength < 40) {
+                strengthBar.classList.add('weak');
+                strengthLabel.textContent = 'Weak';
+                strengthLabel.style.color = 'var(--error-color)';
+            } else if (strength < 70) {
+                strengthBar.classList.add('medium');
+                strengthLabel.textContent = 'Medium';
+                strengthLabel.style.color = 'var(--warning-color)';
+            } else {
+                strengthBar.classList.add('strong');
+                strengthLabel.textContent = 'Strong';
+                strengthLabel.style.color = 'var(--success-color)';
+            }
+        });
+        
+        function calculatePasswordStrength(password) {
+            let strength = 0;
+            
+            if (password.length >= 8) strength += 25;
+            if (password.length >= 12) strength += 15;
+            if (/[a-z]/.test(password)) strength += 15;
+            if (/[A-Z]/.test(password)) strength += 15;
+            if (/[0-9]/.test(password)) strength += 15;
+            if (/[^a-zA-Z0-9]/.test(password)) strength += 15;
+            
+            return strength;
+        }
+        
+        // Form validation
+        document.getElementById('register-form')?.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Clear previous errors
+            document.querySelectorAll('.form-error').forEach(el => el.textContent = '');
+            document.querySelectorAll('.form-control').forEach(el => el.classList.remove('error', 'success'));
+            
+            let isValid = true;
+            
+            // Get values
+            const firstName = document.getElementById('firstName').value.trim();
+            const lastName = document.getElementById('lastName').value.trim();
+            const username = document.getElementById('username').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            const terms = document.getElementById('terms').checked;
+            
+            // Validate first name
+            if (firstName === '') {
+                document.getElementById('firstName-error').textContent = 'First name is required';
+                document.getElementById('firstName').classList.add('error');
+                isValid = false;
+            }
+            
+            // Validate last name
+            if (lastName === '') {
+                document.getElementById('lastName-error').textContent = 'Last name is required';
+                document.getElementById('lastName').classList.add('error');
+                isValid = false;
+            }
+            
+            // Validate username
+            if (username === '') {
+                document.getElementById('username-error').textContent = 'Username is required';
+                document.getElementById('username').classList.add('error');
+                isValid = false;
+            } else if (username.length < 3 || username.length > 20) {
+                document.getElementById('username-error').textContent = 'Username must be 3-20 characters';
+                document.getElementById('username').classList.add('error');
+                isValid = false;
+            } else if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+                document.getElementById('username-error').textContent = 'Username can only contain letters, numbers, and underscore';
+                document.getElementById('username').classList.add('error');
+                isValid = false;
+            }
+            
+            // Validate email
+            if (email === '') {
+                document.getElementById('email-error').textContent = 'Email is required';
+                document.getElementById('email').classList.add('error');
+                isValid = false;
+            } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                document.getElementById('email-error').textContent = 'Please enter a valid email address';
+                document.getElementById('email').classList.add('error');
+                isValid = false;
+            }
+            
+            // Validate password
+            if (password === '') {
+                document.getElementById('password-error').textContent = 'Password is required';
+                document.getElementById('password').classList.add('error');
+                isValid = false;
+            } else if (password.length < 8) {
+                document.getElementById('password-error').textContent = 'Password must be at least 8 characters';
+                document.getElementById('password').classList.add('error');
+                isValid = false;
+            }
+            
+            // Validate confirm password
+            if (confirmPassword === '') {
+                document.getElementById('confirmPassword-error').textContent = 'Please confirm your password';
+                document.getElementById('confirmPassword').classList.add('error');
+                isValid = false;
+            } else if (password !== confirmPassword) {
+                document.getElementById('confirmPassword-error').textContent = 'Passwords do not match';
+                document.getElementById('confirmPassword').classList.add('error');
+                isValid = false;
+            }
+            
+            // Validate terms
+            if (!terms) {
+                document.getElementById('terms-error').textContent = 'You must agree to the terms and conditions';
+                isValid = false;
+            }
+            
+            if (isValid) {
+                // Form is valid - submit it
+                // In production, this will submit to the backend
+                this.submit();
+                
+                // For now, show success message (remove when backend is ready)
+                // document.getElementById('success-alert').textContent = 'Account created successfully! Redirecting to login...';
+                // document.getElementById('success-alert').classList.remove('hidden');
+                // setTimeout(() => window.location.href = '/login', 2000);
+            }
+        });
+    </script>
+</body>
+</html>

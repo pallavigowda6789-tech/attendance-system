@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>API Test Page</title>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        pre { background: #f5f5f5; padding: 10px; overflow-x: auto; }
+        .success { color: green; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>API Test Page</h1>
+    
+    <div class="test-section">
+        <h2>Test 1: Direct Fetch - Get Attendance Records</h2>
+        <button onclick="testDirectFetch()">Test Direct Fetch</button>
+        <pre id="direct-result">Click button to test...</pre>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test 2: AJAX Helper - Get Attendance Records</h2>
+        <button onclick="testAjaxHelper()">Test AJAX Helper</button>
+        <pre id="ajax-result">Click button to test...</pre>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test 3: Mark Attendance</h2>
+        <button onclick="testMarkAttendance()">Test Mark Attendance</button>
+        <pre id="mark-result">Click button to test...</pre>
+    </div>
+    
+    <script src="/js/ajax-helper.js"></script>
+    
+    <script>
+        async function testDirectFetch() {
+            const resultEl = document.getElementById('direct-result');
+            resultEl.textContent = 'Testing...';
+            
+            try {
+                const response = await fetch('/api/attendance/my-records?page=0&size=10');
+                const data = await response.json();
+                
+                resultEl.innerHTML = `
+<span class="success">✓ Success!</span>
+Status: ${response.status}
+Response Structure:
+${JSON.stringify(data, null, 2)}
+                `;
+            } catch (error) {
+                resultEl.innerHTML = `<span class="error">✗ Error:</span>\n${error.message}\n${error.stack}`;
+            }
+        }
+        
+        async function testAjaxHelper() {
+            const resultEl = document.getElementById('ajax-result');
+            resultEl.textContent = 'Testing...';
+            
+            try {
+                const response = await ajax.get('/api/attendance/my-records', { page: 0, size: 10 });
+                
+                resultEl.innerHTML = `
+<span class="${response.success ? 'success' : 'error'}">${response.success ? '✓' : '✗'} ${response.success ? 'Success' : 'Failed'}!</span>
+Ajax Response Structure:
+${JSON.stringify(response, null, 2)}
+                `;
+            } catch (error) {
+                resultEl.innerHTML = `<span class="error">✗ Exception:</span>\n${error.message}\n${error.stack}`;
+            }
+        }
+        
+        async function testMarkAttendance() {
+            const resultEl = document.getElementById('mark-result');
+            resultEl.textContent = 'Testing...';
+            
+            try {
+                const response = await ajax.post('/api/attendance/mark', { 
+                    present: true,
+                    notes: 'Test from API test page'
+                });
+                
+                resultEl.innerHTML = `
+<span class="${response.success ? 'success' : 'error'}">${response.success ? '✓' : '✗'} ${response.success ? 'Success' : 'Failed'}!</span>
+Ajax Response Structure:
+${JSON.stringify(response, null, 2)}
+                `;
+            } catch (error) {
+                resultEl.innerHTML = `<span class="error">✗ Exception:</span>\n${error.message}\n${error.stack}`;
+            }
+        }
+    </script>
+</body>
+</html>

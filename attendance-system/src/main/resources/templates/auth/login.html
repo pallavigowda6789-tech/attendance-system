@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="_csrf" th:content="${_csrf?.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf?.headerName}"/>
+    <title>Login - Attendance System</title>
+    
+    <!-- CSS Files -->
+    <link rel="stylesheet" th:href="@{/css/variables.css}">
+    <link rel="stylesheet" th:href="@{/css/reset.css}">
+    <link rel="stylesheet" th:href="@{/css/global.css}">
+    <link rel="stylesheet" th:href="@{/css/components.css}">
+    <link rel="stylesheet" th:href="@{/css/auth.css}">
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-card">
+            <!-- Header -->
+            <div class="auth-header">
+                <div class="auth-logo">📋</div>
+                <h1 class="auth-title">Welcome Back</h1>
+                <p class="auth-subtitle">Sign in to your account to continue</p>
+            </div>
+            
+            <!-- Error Alert -->
+            <div class="alert alert-error auth-alert" th:if="${param.error}">
+                <span th:text="${param.error[0] ?: 'Invalid username or password. Please try again.'}">Error message</span>
+            </div>
+            
+            <!-- Logout Success Alert -->
+            <div class="alert alert-success auth-alert" th:if="${param.logout}">
+                You have been logged out successfully.
+            </div>
+            
+            <!-- Login Form -->
+            <form class="auth-form" th:action="@{/login}" method="post" id="login-form">
+                <!-- CSRF Token -->
+                <input type="hidden" th:name="${_csrf?.parameterName}" th:value="${_csrf?.token}" />
+                
+                <!-- Username/Email -->
+                <div class="form-group">
+                    <label for="username" class="form-label required">Username or Email</label>
+                    <input 
+                        type="text" 
+                        id="username" 
+                        name="username" 
+                        class="form-control" 
+                        placeholder="Enter your username or email"
+                        required 
+                        autofocus
+                    />
+                    <div class="form-error" id="username-error"></div>
+                </div>
+                
+                <!-- Password -->
+                <div class="form-group">
+                    <label for="password" class="form-label required">Password</label>
+                    <div class="password-wrapper">
+                        <input 
+                            type="password" 
+                            id="password" 
+                            name="password" 
+                            class="form-control" 
+                            placeholder="Enter your password"
+                            required
+                        />
+                        <button type="button" class="password-toggle" id="password-toggle" aria-label="Toggle password visibility">
+                            <span id="password-toggle-icon">👁️</span>
+                        </button>
+                    </div>
+                    <div class="form-error" id="password-error"></div>
+                </div>
+                
+                <!-- Remember Me & Forgot Password -->
+                <div class="remember-me">
+                    <div class="checkbox-wrapper">
+                        <input type="checkbox" id="remember-me" name="remember-me" class="checkbox">
+                        <label for="remember-me" class="text-sm">Remember me</label>
+                    </div>
+                    <a href="/forgot-password" class="forgot-password" th:href="@{/forgot-password}">Forgot password?</a>
+                </div>
+                
+                <!-- Submit Button -->
+                <button type="submit" class="btn btn-primary btn-block btn-lg" id="login-btn">
+                    Sign In
+                </button>
+            </form>
+            
+            <!-- Divider -->
+            <div class="auth-divider">
+                <span>OR</span>
+            </div>
+            
+            <!-- OAuth2 Login Buttons -->
+            <a href="/oauth2/authorization/google" th:href="@{/oauth2/authorization/google}" class="btn-sso">
+                <span>🔐</span>
+                <span>Sign in with Google</span>
+            </a>
+            
+            <!-- Register Link -->
+            <div class="auth-footer">
+                Don't have an account? <a href="/register" th:href="@{/register}">Sign up</a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- JavaScript -->
+    <script th:src="@{/js/main.js}"></script>
+    <script th:src="@{/js/ajax-helper.js}"></script>
+    <script th:src="@{/js/validation.js}"></script>
+    <script>
+        // Password toggle
+        document.getElementById('password-toggle')?.addEventListener('click', function() {
+            const passwordInput = document.getElementById('password');
+            const icon = document.getElementById('password-toggle-icon');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                icon.textContent = '🙈';
+            } else {
+                passwordInput.type = 'password';
+                icon.textContent = '👁️';
+            }
+        });
+        
+        // Form validation
+        document.getElementById('login-form')?.addEventListener('submit', function(e) {
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            
+            let isValid = true;
+            
+            // Clear previous errors
+            document.getElementById('username-error').textContent = '';
+            document.getElementById('password-error').textContent = '';
+            
+            // Validate username
+            if (username === '') {
+                document.getElementById('username-error').textContent = 'Username or email is required';
+                document.getElementById('username').classList.add('error');
+                isValid = false;
+            } else {
+                document.getElementById('username').classList.remove('error');
+            }
+            
+            // Validate password
+            if (password === '') {
+                document.getElementById('password-error').textContent = 'Password is required';
+                document.getElementById('password').classList.add('error');
+                isValid = false;
+            } else {
+                document.getElementById('password').classList.remove('error');
+            }
+            
+            if (!isValid) {
+                e.preventDefault();
+            }
+        });
+    </script>
+</body>
+</html>

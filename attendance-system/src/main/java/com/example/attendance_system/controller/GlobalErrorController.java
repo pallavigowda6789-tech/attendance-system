@@ -33,6 +33,7 @@ public class GlobalErrorController implements ErrorController {
         }
 
         model.addAttribute("errorMessage", "Unexpected error occurred");
-        return "error/general";
+        // Return 500 error page as fallback instead of non-existent general page
+        return "error/500";
     }
 }

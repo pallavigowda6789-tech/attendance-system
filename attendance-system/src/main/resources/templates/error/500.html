@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>500 - Server Error</title>
+    
+    <!-- CSS Files -->
+    <link rel="stylesheet" th:href="@{/css/variables.css}">
+    <link rel="stylesheet" th:href="@{/css/reset.css}">
+    <link rel="stylesheet" th:href="@{/css/global.css}">
+    <link rel="stylesheet" th:href="@{/css/components.css}">
+    <link rel="stylesheet" th:href="@{/css/error.css}">
+</head>
+<body>
+    <div class="error-container">
+        <div class="error-content">
+            <div class="error-code">500</div>
+            <div class="error-icon">⚠️</div>
+            <h1 class="error-title">Internal Server Error</h1>
+            <p class="error-message">
+                Something went wrong on our end. 
+                We're working to fix it. Please try again later.
+            </p>
+            <div class="error-actions">
+                <a href="/" th:href="@{/}" class="btn btn-primary">
+                    Go Home
+                </a>
+                <button onclick="location.reload()" class="btn btn-outline">
+                    Reload Page
+                </button>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
