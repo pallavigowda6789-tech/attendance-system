@@ -8,6 +8,8 @@ import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 /**
  * REST controller for user profile management.
  */
@@ -65,6 +67,39 @@ public class UserRestController {
         
         userService.changePassword(currentUser.getId(), passwordChangeDTO);
         return ResponseEntity.ok(ApiResponse.success("Password changed successfully"));
+    }
+
+    /**
+     * Link OAuth account to local account (set password for OAuth users).
+     */
+    @PostMapping("/link-account")
+    public ResponseEntity<ApiResponse<Void>> linkAccount(@RequestBody Map<String, String> request) {
+        String password = request.get("password");
+        String confirmPassword = request.get("confirmPassword");
+        
+        userService.linkOAuthAccount(password, confirmPassword);
+        return ResponseEntity.ok(ApiResponse.success("Account linked successfully. You can now login with password."));
+    }
+
+    /**
+     * Check if current user is an OAuth user.
+     */
+    @GetMapping("/is-oauth")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> isOAuthUser() {
+        UserDTO currentUser = userService.getCurrentUser();
+        if (currentUser == null) {
+            return ResponseEntity.status(401)
+                    .body(ApiResponse.error("User not authenticated", 4001));
+        }
+        
+        boolean isOAuth = "GOOGLE".equals(currentUser.getAuthProvider()) || 
+                          "GITHUB".equals(currentUser.getAuthProvider());
+        
+        return ResponseEntity.ok(ApiResponse.success(Map.of(
+                "isOAuth", isOAuth,
+                "authProvider", currentUser.getAuthProvider() != null ? currentUser.getAuthProvider() : "LOCAL",
+                "canSetPassword", isOAuth
+        )));
     }
 
     /**

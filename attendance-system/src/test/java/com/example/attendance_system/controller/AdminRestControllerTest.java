@@ -227,7 +227,7 @@ class AdminRestControllerTest {
                     .thenReturn(pagedResponse);
 
             ResponseEntity<ApiResponse<PagedResponse<AttendanceDTO>>> response =
-                    adminRestController.getAllAttendance(0, 10);
+                    adminRestController.getAllAttendance(0, 10, null, null, null);
 
             assertEquals(200, response.getStatusCode().value());
             assertTrue(response.getBody().isSuccess());

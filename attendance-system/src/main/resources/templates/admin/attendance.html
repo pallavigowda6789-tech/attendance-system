@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="_csrf" th:content="${_csrf?.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf?.headerName}"/>
+    <title>Attendance Management - Admin</title>
+    
+    <!-- CSS Files -->
+    <link rel="stylesheet" th:href="@{/css/variables.css}">
+    <link rel="stylesheet" th:href="@{/css/reset.css}">
+    <link rel="stylesheet" th:href="@{/css/global.css}">
+    <link rel="stylesheet" th:href="@{/css/components.css}">
+    <link rel="stylesheet" th:href="@{/css/navbar.css}">
+    <link rel="stylesheet" th:href="@{/css/admin.css}">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <!-- Admin Navbar -->
+    <div th:replace="~{layout/admin-navbar :: admin-navbar}"></div>
+    
+    <!-- Main Content -->
+    <main class="content-wrapper">
+        <div class="container">
+            <!-- Header -->
+            <div class="admin-header">
+                <h1>📊 Attendance Management</h1>
+                <p>View and manage all attendance records</p>
+            </div>
+            
+            <!-- Statistics Cards -->
+            <div class="stats-grid" id="stats-container">
+                <div class="stat-card primary">
+                    <div class="stat-icon">👥</div>
+                    <div class="stat-value" id="total-users">-</div>
+                    <div class="stat-label">Total Users</div>
+                </div>
+                <div class="stat-card success">
+                    <div class="stat-icon">✓</div>
+                    <div class="stat-value" id="present-today">-</div>
+                    <div class="stat-label">Present Today</div>
+                </div>
+                <div class="stat-card error">
+                    <div class="stat-icon">✗</div>
+                    <div class="stat-value" id="absent-today">-</div>
+                    <div class="stat-label">Absent Today</div>
+                </div>
+                <div class="stat-card info">
+                    <div class="stat-icon">📈</div>
+                    <div class="stat-value" id="avg-attendance">-</div>
+                    <div class="stat-label">Avg Attendance</div>
+                </div>
+            </div>
+            
+            <!-- Charts Section -->
+            <div class="charts-section">
+                <div class="chart-card">
+                    <h3>Attendance Overview</h3>
+                    <canvas id="attendanceChart"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>User Attendance Summary</h3>
+                    <canvas id="userSummaryChart"></canvas>
+                </div>
+            </div>
+            
+            <!-- Filters -->
+            <div class="card filter-card">
+                <div class="card-body">
+                    <div class="filter-row">
+                        <div class="form-group">
+                            <label for="user-filter" class="form-label">User</label>
+                            <select id="user-filter" class="form-control">
+                                <option value="">All Users</option>
+                                <th:block th:each="u : ${users}">
+                                    <option th:value="${u.id}" th:text="${u.fullName + ' (' + u.username + ')'}"></option>
+                                </th:block>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="start-date" class="form-label">Start Date</label>
+                            <input type="date" id="start-date" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label for="end-date" class="form-label">End Date</label>
+                            <input type="date" id="end-date" class="form-control">
+                        </div>
+                        <div class="form-group filter-buttons">
+                            <button class="btn btn-primary" id="apply-filter-btn">Apply Filter</button>
+                            <button class="btn btn-outline" id="reset-filter-btn">Reset</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Attendance Table -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>Attendance Records</h3>
+                    <button class="btn btn-primary btn-sm" id="mark-attendance-btn">
+                        <span>+</span> Mark Attendance
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="table-wrapper">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>User</th>
+                                    <th>Date</th>
+                                    <th>Status</th>
+                                    <th>Check In</th>
+                                    <th>Check Out</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="attendance-tbody">
+                                <tr>
+                                    <td colspan="7" class="no-data">Loading...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Pagination -->
+                    <div class="pagination">
+                        <button id="prev-page">Previous</button>
+                        <span class="page-info" id="page-info">Page 1 of 1</span>
+                        <button id="next-page">Next</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <!-- Mark Attendance Modal -->
+    <div id="mark-modal" class="modal-backdrop hidden" style="display: none;">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Mark Attendance</h3>
+                <button class="btn btn-sm" onclick="closeMarkModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <form id="mark-form">
+                    <div class="form-group">
+                        <label for="mark-user" class="form-label required">User</label>
+                        <select id="mark-user" class="form-control" required>
+                            <option value="">Select User</option>
+                            <th:block th:each="u : ${users}">
+                                <option th:value="${u.id}" th:text="${u.fullName + ' (' + u.username + ')'}"></option>
+                            </th:block>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="mark-date" class="form-label required">Date</label>
+                        <input type="date" id="mark-date" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Status</label>
+                        <div class="radio-group">
+                            <label class="radio-label">
+                                <input type="radio" name="mark-status" value="true" checked> Present
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="mark-status" value="false"> Absent
+                            </label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeMarkModal()">Cancel</button>
+                <button type="submit" form="mark-form" class="btn btn-primary">Mark</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Toast Container -->
+    <div id="toast-container" class="toast-container"></div>
+    
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="modal-backdrop hidden" style="display: none;">
+        <div class="spinner"></div>
+    </div>
+    
+    <!-- JavaScript -->
+    <script th:src="@{/js/main.js}"></script>
+    <script th:src="@{/js/ajax-helper.js}"></script>
+    <script th:src="@{/js/admin-attendance.js}"></script>
+</body>
+</html>

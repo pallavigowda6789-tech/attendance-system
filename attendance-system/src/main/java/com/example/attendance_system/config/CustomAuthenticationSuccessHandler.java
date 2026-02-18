@@ -24,6 +24,7 @@ import java.util.Optional;
 /**
  * Custom authentication success handler for both form and OAuth2 login.
  * Creates new users for OAuth2/OIDC logins if they don't exist.
+ * Redirects admins to admin dashboard, others to user dashboard.
  */
 @Component
 public class CustomAuthenticationSuccessHandler extends SavedRequestAwareAuthenticationSuccessHandler {
@@ -50,12 +51,26 @@ public class CustomAuthenticationSuccessHandler extends SavedRequestAwareAuthent
         
         if (user != null) {
             setupSession(request.getSession(), user);
-            logger.info("User {} logged in successfully", user.getUsername());
+            logger.info("User {} logged in successfully with role {}", user.getUsername(), user.getRole());
+            
+            // Redirect based on role
+            String targetUrl = determineTargetUrl(user);
+            logger.info("Redirecting to: {}", targetUrl);
+            getRedirectStrategy().sendRedirect(request, response, targetUrl);
         } else {
             logger.warn("Could not find or create user for authenticated principal");
+            super.onAuthenticationSuccess(request, response, authentication);
         }
+    }
 
-        super.onAuthenticationSuccess(request, response, authentication);
+    /**
+     * Determine the target URL based on user role.
+     */
+    private String determineTargetUrl(User user) {
+        if (user.getRole() == Role.ADMIN) {
+            return "/admin/dashboard";
+        }
+        return "/dashboard";
     }
 
     /**

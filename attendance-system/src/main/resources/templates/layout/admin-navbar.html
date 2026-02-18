@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<body>
+    <!-- Admin Navbar Fragment -->
+    <nav th:fragment="admin-navbar" class="navbar admin-navbar">
+        <div class="navbar-container">
+            <!-- Brand/Logo -->
+            <a href="/admin/dashboard" class="navbar-brand" th:href="@{/admin/dashboard}">
+                <span>⚙️</span>
+                <span>Admin Panel</span>
+            </a>
+            
+            <!-- Mobile Menu Toggle -->
+            <button class="mobile-toggle" id="mobile-toggle" aria-label="Toggle navigation">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            
+            <!-- Navigation Links -->
+            <ul class="navbar-nav" id="navbar-nav">
+                <li>
+                    <a href="/admin/dashboard" class="nav-link" th:href="@{/admin/dashboard}">
+                        <span>📊</span>
+                        <span>Dashboard</span>
+                    </a>
+                </li>
+                
+                <li>
+                    <a href="/admin/users" class="nav-link" th:href="@{/admin/users}">
+                        <span>👥</span>
+                        <span>Users</span>
+                    </a>
+                </li>
+                
+                <li>
+                    <a href="/admin/attendance" class="nav-link" th:href="@{/admin/attendance}">
+                        <span>📋</span>
+                        <span>Attendance</span>
+                    </a>
+                </li>
+                
+                <li>
+                    <a href="/admin/leaves" class="nav-link" th:href="@{/admin/leaves}">
+                        <span>🏖️</span>
+                        <span>Leave Requests</span>
+                    </a>
+                </li>
+                
+                <li class="nav-separator"></li>
+                
+                <li>
+                    <a href="/dashboard" class="nav-link nav-link-secondary" th:href="@{/dashboard}">
+                        <span>🏠</span>
+                        <span>Back to App</span>
+                    </a>
+                </li>
+            </ul>
+            
+            <!-- User Dropdown (Right Side) -->
+            <div class="navbar-user">
+                <div class="user-button" id="user-dropdown-btn">
+                    <div class="user-avatar admin-avatar">A</div>
+                    <span class="user-name" sec:authentication="name">Admin</span>
+                    <svg class="dropdown-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </div>
+                
+                <!-- Dropdown Menu -->
+                <div class="dropdown-menu" id="user-dropdown-menu">
+                    <a href="/profile" class="dropdown-item" th:href="@{/profile}">
+                        <span>👤</span>
+                        <span>My Profile</span>
+                    </a>
+                    <a href="/dashboard" class="dropdown-item" th:href="@{/dashboard}">
+                        <span>🏠</span>
+                        <span>User Dashboard</span>
+                    </a>
+                    <div class="dropdown-divider"></div>
+                    <a href="/logout" class="dropdown-item" th:href="@{/logout}">
+                        <span>🚪</span>
+                        <span>Logout</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+</body>
+</html>

@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -297,5 +298,96 @@ public class UserService {
     @Transactional(readOnly = true)
     public boolean existsByEmail(String email) {
         return userRepository.existsByEmail(email);
+    }
+
+    /**
+     * Admin update user (flexible field updates).
+     */
+    public UserDTO adminUpdateUser(Long userId, Map<String, Object> updates) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
+
+        if (updates.containsKey("firstName")) {
+            user.setFirstName((String) updates.get("firstName"));
+        }
+        if (updates.containsKey("lastName")) {
+            user.setLastName((String) updates.get("lastName"));
+        }
+        if (updates.containsKey("email")) {
+            String newEmail = (String) updates.get("email");
+            if (!user.getEmail().equals(newEmail)) {
+                if (userRepository.existsByEmailAndIdNot(newEmail, userId)) {
+                    throw new DuplicateResourceException("User", "email", newEmail);
+                }
+                user.setEmail(newEmail);
+            }
+        }
+        if (updates.containsKey("username")) {
+            String newUsername = (String) updates.get("username");
+            if (!user.getUsername().equals(newUsername)) {
+                if (userRepository.existsByUsernameAndIdNot(newUsername, userId)) {
+                    throw new DuplicateResourceException("User", "username", newUsername);
+                }
+                user.setUsername(newUsername);
+            }
+        }
+        if (updates.containsKey("role")) {
+            Role role = Role.valueOf(((String) updates.get("role")).toUpperCase());
+            user.setRole(role);
+        }
+        if (updates.containsKey("enabled")) {
+            user.setEnabled(Boolean.parseBoolean(updates.get("enabled").toString()));
+        }
+
+        User savedUser = userRepository.save(user);
+        logger.info("Admin updated user: {}", savedUser.getUsername());
+        return UserDTO.fromEntity(savedUser);
+    }
+
+    /**
+     * Admin reset password.
+     */
+    public void adminResetPassword(Long userId, String newPassword) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
+
+        if (user.isOAuthUser()) {
+            throw new InvalidOperationException("Cannot set password for OAuth users. User must link account first.");
+        }
+
+        if (newPassword == null || newPassword.length() < 6) {
+            throw new InvalidOperationException("Password must be at least 6 characters");
+        }
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+        logger.info("Admin reset password for user: {}", user.getUsername());
+    }
+
+    /**
+     * Link OAuth account to local account (set password for OAuth user).
+     */
+    public void linkOAuthAccount(String newPassword, String confirmPassword) {
+        User user = getCurrentUserEntity();
+        if (user == null) {
+            throw new InvalidOperationException("User not authenticated");
+        }
+
+        if (!user.isOAuthUser()) {
+            throw new InvalidOperationException("Account is already a local account");
+        }
+
+        if (newPassword == null || newPassword.length() < 6) {
+            throw new InvalidOperationException("Password must be at least 6 characters");
+        }
+
+        if (!newPassword.equals(confirmPassword)) {
+            throw new InvalidOperationException("Passwords do not match");
+        }
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        user.setAuthProvider(AuthProvider.LOCAL);
+        userRepository.save(user);
+        logger.info("OAuth user {} linked to local account", user.getUsername());
     }
 }

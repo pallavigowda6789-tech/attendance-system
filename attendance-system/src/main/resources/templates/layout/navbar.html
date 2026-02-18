@@ -41,16 +41,8 @@
                 </li>
                 
                 <li sec:authorize="isAuthenticated()">
-                    <a href="/profile" class="nav-link" th:href="@{/profile}">
-                        Profile
-                    </a>
-                </li>
-                
-                <!-- Admin Links -->
-                <li sec:authorize="hasRole('ADMIN')">
-                    <a href="/admin/users" class="nav-link" th:href="@{/admin/users}">
-                        <span>Admin</span>
-                        <span class="admin-badge">ADMIN</span>
+                    <a href="/leaves" class="nav-link" th:href="@{/leaves}">
+                        Leaves
                     </a>
                 </li>
             </ul>
@@ -82,6 +74,18 @@
                             <span>📊</span>
                             <span>My Attendance</span>
                         </a>
+                        <a href="/leaves" class="dropdown-item" th:href="@{/leaves}">
+                            <span>📋</span>
+                            <span>My Leaves</span>
+                        </a>
+                        <!-- Admin Panel Link -->
+                        <div sec:authorize="hasRole('ADMIN')">
+                            <div class="dropdown-divider"></div>
+                            <a href="/admin/dashboard" class="dropdown-item" th:href="@{/admin/dashboard}">
+                                <span>⚙️</span>
+                                <span>Admin Panel</span>
+                            </a>
+                        </div>
                         <div class="dropdown-divider"></div>
                         <a href="/logout" class="dropdown-item" th:href="@{/logout}">
                             <span>🚪</span>

@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="_csrf" th:content="${_csrf?.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf?.headerName}"/>
+    <title>Leave Management - Attendance System</title>
+    
+    <!-- CSS Files -->
+    <link rel="stylesheet" th:href="@{/css/variables.css}">
+    <link rel="stylesheet" th:href="@{/css/reset.css}">
+    <link rel="stylesheet" th:href="@{/css/global.css}">
+    <link rel="stylesheet" th:href="@{/css/components.css}">
+    <link rel="stylesheet" th:href="@{/css/navbar.css}">
+    <link rel="stylesheet" th:href="@{/css/dashboard.css}">
+</head>
+<body>
+    <!-- Navbar -->
+    <div th:replace="~{layout/navbar :: navbar}"></div>
+    
+    <!-- Main Content -->
+    <main class="content-wrapper">
+        <div class="container">
+            <!-- Header -->
+            <div class="welcome-banner">
+                <h1>📋 Leave Management</h1>
+                <p>Request and track your leaves</p>
+            </div>
+            
+            <!-- Statistics Cards -->
+            <div class="stats-grid">
+                <div class="stat-card primary">
+                    <div class="stat-icon">📅</div>
+                    <div class="stat-value" id="total-used">0</div>
+                    <div class="stat-label">Days Used (This Year)</div>
+                </div>
+                <div class="stat-card warning">
+                    <div class="stat-icon">⏳</div>
+                    <div class="stat-value" id="pending-count">0</div>
+                    <div class="stat-label">Pending Requests</div>
+                </div>
+                <div class="stat-card success">
+                    <div class="stat-icon">✓</div>
+                    <div class="stat-value" id="approved-count">0</div>
+                    <div class="stat-label">Approved</div>
+                </div>
+                <div class="stat-card error">
+                    <div class="stat-icon">✗</div>
+                    <div class="stat-value" id="rejected-count">0</div>
+                    <div class="stat-label">Rejected</div>
+                </div>
+            </div>
+            
+            <!-- Request Leave Section -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>Request Leave</h3>
+                </div>
+                <div class="card-body">
+                    <form id="leave-request-form" class="leave-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="leave-type" class="form-label required">Leave Type</label>
+                                <select id="leave-type" class="form-control" required>
+                                    <option value="">Select Type</option>
+                                    <option value="ANNUAL">Annual Leave</option>
+                                    <option value="SICK">Sick Leave</option>
+                                    <option value="PERSONAL">Personal Leave</option>
+                                    <option value="MATERNITY">Maternity Leave</option>
+                                    <option value="PATERNITY">Paternity Leave</option>
+                                    <option value="UNPAID">Unpaid Leave</option>
+                                    <option value="OTHER">Other</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="start-date" class="form-label required">Start Date</label>
+                                <input type="date" id="start-date" class="form-control" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="end-date" class="form-label required">End Date</label>
+                                <input type="date" id="end-date" class="form-control" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="reason" class="form-label">Reason</label>
+                            <textarea id="reason" class="form-control" rows="3" 
+                                      placeholder="Optional: Provide a reason for your leave request"></textarea>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">Submit Request</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Leave History -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>My Leave Requests</h3>
+                </div>
+                <div class="card-body">
+                    <div class="table-wrapper">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Type</th>
+                                    <th>From</th>
+                                    <th>To</th>
+                                    <th>Days</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="leaves-tbody">
+                                <tr>
+                                    <td colspan="7" class="no-data">Loading...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Pagination -->
+                    <div class="pagination">
+                        <button id="prev-page">Previous</button>
+                        <span class="page-info" id="page-info">Page 1 of 1</span>
+                        <button id="next-page">Next</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <!-- Toast Container -->
+    <div id="toast-container" class="toast-container"></div>
+    
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="modal-backdrop hidden" style="display: none;">
+        <div class="spinner"></div>
+    </div>
+    
+    <!-- JavaScript -->
+    <script th:src="@{/js/main.js}"></script>
+    <script th:src="@{/js/ajax-helper.js}"></script>
+    <script th:src="@{/js/leaves.js}"></script>
+</body>
+</html>

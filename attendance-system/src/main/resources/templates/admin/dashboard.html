@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="_csrf" th:content="${_csrf?.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf?.headerName}"/>
+    <title>Admin Dashboard - Attendance System</title>
+    
+    <!-- CSS Files -->
+    <link rel="stylesheet" th:href="@{/css/variables.css}">
+    <link rel="stylesheet" th:href="@{/css/reset.css}">
+    <link rel="stylesheet" th:href="@{/css/global.css}">
+    <link rel="stylesheet" th:href="@{/css/components.css}">
+    <link rel="stylesheet" th:href="@{/css/navbar.css}">
+    <link rel="stylesheet" th:href="@{/css/admin.css}">
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <!-- Admin Navbar -->
+    <div th:replace="~{layout/admin-navbar :: admin-navbar}"></div>
+    
+    <!-- Main Content -->
+    <main class="content-wrapper">
+        <div class="container">
+            <!-- Admin Header -->
+            <div class="admin-header">
+                <h1>Admin Dashboard</h1>
+                <p>System overview and quick actions</p>
+            </div>
+            
+            <!-- Statistics Cards -->
+            <div class="stats-grid" id="stats-grid">
+                <div class="stat-card primary">
+                    <div class="stat-icon">👥</div>
+                    <div class="stat-value" id="total-users">-</div>
+                    <div class="stat-label">Total Users</div>
+                </div>
+                
+                <div class="stat-card success">
+                    <div class="stat-icon">✓</div>
+                    <div class="stat-value" id="present-today">-</div>
+                    <div class="stat-label">Present Today</div>
+                </div>
+                
+                <div class="stat-card error">
+                    <div class="stat-icon">✗</div>
+                    <div class="stat-value" id="absent-today">-</div>
+                    <div class="stat-label">Absent Today</div>
+                </div>
+                
+                <div class="stat-card warning">
+                    <div class="stat-icon">📋</div>
+                    <div class="stat-value" id="pending-leaves">-</div>
+                    <div class="stat-label">Pending Leaves</div>
+                </div>
+            </div>
+            
+            <!-- Charts Section -->
+            <div class="charts-section">
+                <div class="chart-card">
+                    <h3>Today's Attendance</h3>
+                    <canvas id="attendance-chart"></canvas>
+                </div>
+                
+                <div class="chart-card">
+                    <h3>Weekly Attendance Trend</h3>
+                    <canvas id="weekly-chart"></canvas>
+                </div>
+            </div>
+            
+            <!-- Quick Actions -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>Quick Actions</h3>
+                </div>
+                <div class="card-body">
+                    <div class="quick-actions-grid">
+                        <a href="/admin/users" th:href="@{/admin/users}" class="quick-action-card">
+                            <div class="quick-action-icon">👥</div>
+                            <div class="quick-action-title">Manage Users</div>
+                            <div class="quick-action-desc">Add, edit, or remove users</div>
+                        </a>
+                        
+                        <a href="/admin/attendance" th:href="@{/admin/attendance}" class="quick-action-card">
+                            <div class="quick-action-icon">📊</div>
+                            <div class="quick-action-title">View Attendance</div>
+                            <div class="quick-action-desc">Monitor attendance records</div>
+                        </a>
+                        
+                        <a href="/admin/leaves" th:href="@{/admin/leaves}" class="quick-action-card">
+                            <div class="quick-action-icon">🏖️</div>
+                            <div class="quick-action-title">Leave Requests</div>
+                            <div class="quick-action-desc">Approve or reject leaves</div>
+                        </a>
+                        
+                        <div class="quick-action-card" id="export-btn" style="cursor: pointer;">
+                            <div class="quick-action-icon">📥</div>
+                            <div class="quick-action-title">Export Data</div>
+                            <div class="quick-action-desc">Download attendance reports</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Recent Activity -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>Recent Activity</h3>
+                    <a href="/admin/attendance" th:href="@{/admin/attendance}" class="btn btn-sm btn-outline">View All</a>
+                </div>
+                <div class="card-body">
+                    <div class="table-wrapper">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>User</th>
+                                    <th>Action</th>
+                                    <th>Date</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recent-activity-tbody">
+                                <tr>
+                                    <td colspan="4" class="no-data">Loading...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <!-- Toast Container -->
+    <div id="toast-container" class="toast-container"></div>
+    
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="modal-backdrop hidden" style="display: none;">
+        <div class="spinner"></div>
+    </div>
+    
+    <!-- JavaScript -->
+    <script th:src="@{/js/logger.js}"></script>
+    <script th:src="@{/js/main.js}"></script>
+    <script th:src="@{/js/ajax-helper.js}"></script>
+    <script th:src="@{/js/admin-dashboard.js}"></script>
+</body>
+</html>
