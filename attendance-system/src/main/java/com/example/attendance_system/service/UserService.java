@@ -1,28 +1,38 @@
 package com.example.attendance_system.service;
 
-
 import com.example.attendance_system.dto.PasswordChangeDTO;
 import com.example.attendance_system.dto.RegisterDTO;
 import com.example.attendance_system.dto.UserDTO;
 import com.example.attendance_system.entity.AuthProvider;
 import com.example.attendance_system.entity.Role;
 import com.example.attendance_system.entity.User;
+import com.example.attendance_system.exception.DuplicateResourceException;
+import com.example.attendance_system.exception.InvalidOperationException;
+import com.example.attendance_system.exception.ResourceNotFoundException;
 import com.example.attendance_system.repository.UserRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+/**
+ * Service class for user management operations.
+ */
 @Service
+@Transactional
 public class UserService {
 
-    private final UserRepository userRepository;
+    private static final Logger logger = LoggerFactory.getLogger(UserService.class);
 
+    private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
     public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
@@ -30,23 +40,23 @@ public class UserService {
         this.passwordEncoder = passwordEncoder;
     }
 
-    //for creating local user accounts
-    public User registerLocalUser(User user) {
+    /**
+     * Register a new user with local authentication.
+     */
+    public UserDTO registerUser(RegisterDTO registerDTO) {
+        logger.info("Registering new user: {}", registerDTO.getUsername());
 
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
-        user.setAuthProvider(AuthProvider.LOCAL);
-        user.setRole(Role.USER);
-        user.setEnabled(true);
-
-        return userRepository.save(user);
-    }
-
-    public User registerUser(RegisterDTO registerDTO) {
-        if (userRepository.findByEmail(registerDTO.getEmail()).isPresent()) {
-            throw new RuntimeException("Email already exists");
+        // Validate passwords match
+        if (!registerDTO.isPasswordMatching()) {
+            throw new InvalidOperationException("Passwords do not match");
         }
-        if (userRepository.findByUsername(registerDTO.getUsername()).isPresent()) {
-            throw new RuntimeException("Username already exists");
+
+        // Check for existing user
+        if (userRepository.existsByUsername(registerDTO.getUsername())) {
+            throw new DuplicateResourceException("User", "username", registerDTO.getUsername());
+        }
+        if (userRepository.existsByEmail(registerDTO.getEmail())) {
+            throw new DuplicateResourceException("User", "email", registerDTO.getEmail());
         }
 
         User user = new User();
@@ -58,139 +68,234 @@ public class UserService {
         user.setRole(Role.USER);
         user.setEnabled(true);
         user.setAuthProvider(AuthProvider.LOCAL);
-        user.setCreatedAt(LocalDateTime.now());
 
+        User savedUser = userRepository.save(user);
+        logger.info("User registered successfully: {}", savedUser.getUsername());
+        return UserDTO.fromEntity(savedUser);
+    }
+
+    /**
+     * Register a local user (internal use).
+     */
+    public User registerLocalUser(User user) {
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
+        user.setAuthProvider(AuthProvider.LOCAL);
+        user.setRole(Role.USER);
+        user.setEnabled(true);
         return userRepository.save(user);
     }
 
-    //  Find by username
+    /**
+     * Get the current authenticated user entity.
+     */
+    @Transactional(readOnly = true)
+    public User getCurrentUserEntity() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        // No authentication or anonymous user
+        if (authentication == null || !authentication.isAuthenticated() ||
+            "anonymousUser".equals(authentication.getPrincipal())) {
+            logger.debug("No authenticated user found");
+            return null;
+        }
+
+        Object principal = authentication.getPrincipal();
+        
+        // Handle OIDC authentication (Google) - check first since OidcUser extends OAuth2User
+        if (principal instanceof org.springframework.security.oauth2.core.oidc.user.OidcUser oidcUser) {
+            String email = oidcUser.getEmail();
+            logger.debug("OIDC user lookup by email: {}", email);
+            return userRepository.findByEmail(email).orElse(null);
+        }
+
+        // Handle OAuth2 authentication (GitHub, etc.)
+        if (principal instanceof OAuth2User oauth2User) {
+            String email = oauth2User.getAttribute("email");
+            logger.debug("OAuth2 user lookup by email: {}", email);
+            return userRepository.findByEmail(email).orElse(null);
+        }
+
+        // Handle form login authentication (UserDetails or String)
+        String identifier = authentication.getName();
+        logger.debug("Form login user lookup by identifier: {}", identifier);
+        return userRepository.findByUsername(identifier)
+                .or(() -> userRepository.findByEmail(identifier))
+                .orElse(null);
+    }
+
+    /**
+     * Get the current authenticated user as DTO.
+     */
+    @Transactional(readOnly = true)
+    public UserDTO getCurrentUser() {
+        User user = getCurrentUserEntity();
+        return user != null ? UserDTO.fromEntity(user) : null;
+    }
+
+    /**
+     * Find user by username.
+     */
+    @Transactional(readOnly = true)
     public Optional<User> findByUsername(String username) {
         return userRepository.findByUsername(username);
     }
 
-    //  Find by providerId (SSO)
+    /**
+     * Find user by email.
+     */
+    @Transactional(readOnly = true)
+    public Optional<User> findByEmail(String email) {
+        return userRepository.findByEmail(email);
+    }
+
+    /**
+     * Find user by provider ID.
+     */
+    @Transactional(readOnly = true)
     public Optional<User> findByProviderId(String providerId) {
         return userRepository.findByProviderId(providerId);
     }
 
-    // Save
-    public User save(User user) {
-        return userRepository.save(user);
+    /**
+     * Get user by ID.
+     */
+    @Transactional(readOnly = true)
+    public UserDTO getUserById(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", id));
+        return UserDTO.fromEntity(user);
     }
 
-    public User getCurrentUserEntity() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        
-        // DEVELOPMENT MODE: If no authentication, use first available user
-        if (authentication == null || !authentication.isAuthenticated() || 
-            "anonymousUser".equals(authentication.getPrincipal())) {
-            // Return first user from database for development testing
-            return userRepository.findAll().stream().findFirst().orElse(null);
-        }
-        
-        // Handle OAuth2 authentication
-        if (authentication.getPrincipal() instanceof org.springframework.security.oauth2.core.user.OAuth2User) {
-            org.springframework.security.oauth2.core.user.OAuth2User oauth2User = 
-                (org.springframework.security.oauth2.core.user.OAuth2User) authentication.getPrincipal();
-            String email = oauth2User.getAttribute("email");
-            return userRepository.findByEmail(email).orElse(null);
-        }
-        
-        // Handle form login authentication
-        String identifier = authentication.getName();
-        return userRepository.findByEmail(identifier)
-                .or(() -> userRepository.findByUsername(identifier))
-                .orElse(null);
+    /**
+     * Get all users.
+     */
+    @Transactional(readOnly = true)
+    public List<UserDTO> getAllUsers() {
+        return userRepository.findAll().stream()
+                .map(UserDTO::fromEntity)
+                .collect(Collectors.toList());
     }
 
-    public UserDTO getCurrentUser() {
-        User user = getCurrentUserEntity();
-        return user != null ? convertToDTO(user) : null;
-    }
-
-    public void updateProfile(UserDTO userDTO) {
+    /**
+     * Update user profile.
+     */
+    public UserDTO updateProfile(UserDTO userDTO) {
         User user = userRepository.findById(userDTO.getId())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userDTO.getId()));
 
-        // Check if email is being changed and if new email is already taken
+        // Check if email is being changed and already exists
         if (!user.getEmail().equals(userDTO.getEmail())) {
-            if (userRepository.existsByEmail(userDTO.getEmail())) {
-                throw new RuntimeException("Email already exists");
+            if (userRepository.existsByEmailAndIdNot(userDTO.getEmail(), user.getId())) {
+                throw new DuplicateResourceException("User", "email", userDTO.getEmail());
             }
+            user.setEmail(userDTO.getEmail());
         }
 
         user.setFirstName(userDTO.getFirstName());
         user.setLastName(userDTO.getLastName());
-        user.setEmail(userDTO.getEmail());
 
-        userRepository.save(user);
+        User savedUser = userRepository.save(user);
+        logger.info("User profile updated: {}", savedUser.getUsername());
+        return UserDTO.fromEntity(savedUser);
     }
 
+    /**
+     * Change user password.
+     */
     public void changePassword(Long userId, PasswordChangeDTO passwordChangeDTO) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
 
-        if (user.getAuthProvider() != AuthProvider.LOCAL) {
-            throw new RuntimeException("Cannot change password for SSO users");
+        // SSO users cannot change password
+        if (user.isOAuthUser()) {
+            throw new InvalidOperationException("Cannot change password for OAuth users");
         }
 
+        // Validate current password
         if (!passwordEncoder.matches(passwordChangeDTO.getCurrentPassword(), user.getPassword())) {
-            throw new RuntimeException("Current password is incorrect");
+            throw new InvalidOperationException("Current password is incorrect");
         }
 
-        if (!passwordChangeDTO.getNewPassword().equals(passwordChangeDTO.getConfirmPassword())) {
-            throw new RuntimeException("New passwords do not match");
+        // Validate new passwords match
+        if (!passwordChangeDTO.isPasswordMatching()) {
+            throw new InvalidOperationException("New passwords do not match");
+        }
+
+        // Validate new password is different
+        if (!passwordChangeDTO.isNewPasswordDifferent()) {
+            throw new InvalidOperationException("New password must be different from current password");
         }
 
         user.setPassword(passwordEncoder.encode(passwordChangeDTO.getNewPassword()));
         userRepository.save(user);
+        logger.info("Password changed for user: {}", user.getUsername());
     }
 
-    public List<UserDTO> getAllUsers() {
-        return userRepository.findAll().stream()
-                .map(this::convertToDTO)
-                .collect(Collectors.toList());
+    /**
+     * Update user role (admin only).
+     */
+    public void updateUserRole(Long userId, Role role) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
+        user.setRole(role);
+        userRepository.save(user);
+        logger.info("Role updated for user {}: {}", user.getUsername(), role);
     }
 
+    /**
+     * Toggle user enabled status.
+     */
+    public void toggleUserStatus(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
+        
+        User currentUser = getCurrentUserEntity();
+        if (currentUser != null && currentUser.getId().equals(userId)) {
+            throw new InvalidOperationException("Cannot disable your own account");
+        }
+
+        user.setEnabled(!user.isEnabled());
+        userRepository.save(user);
+        logger.info("User {} status changed to: {}", user.getUsername(), user.isEnabled() ? "enabled" : "disabled");
+    }
+
+    /**
+     * Delete user by ID.
+     */
     public void deleteUser(Long id) {
         User currentUser = getCurrentUserEntity();
         if (currentUser != null && currentUser.getId().equals(id)) {
-            throw new RuntimeException("Cannot delete your own account");
+            throw new InvalidOperationException("Cannot delete your own account");
         }
+
+        if (!userRepository.existsById(id)) {
+            throw new ResourceNotFoundException("User", "id", id);
+        }
+
         userRepository.deleteById(id);
+        logger.info("User deleted with id: {}", id);
     }
 
-    public UserDTO getUserById(Long id) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        return convertToDTO(user);
+    /**
+     * Save user entity.
+     */
+    public User save(User user) {
+        return userRepository.save(user);
     }
 
-    public void updateUserRole(Long userId, Role role) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        user.setRole(role);
-        userRepository.save(user);
+    /**
+     * Check if username exists.
+     */
+    @Transactional(readOnly = true)
+    public boolean existsByUsername(String username) {
+        return userRepository.existsByUsername(username);
     }
 
-    public void toggleUserStatus(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        user.setEnabled(!user.isEnabled());
-        userRepository.save(user);
+    /**
+     * Check if email exists.
+     */
+    @Transactional(readOnly = true)
+    public boolean existsByEmail(String email) {
+        return userRepository.existsByEmail(email);
     }
-
-    private UserDTO convertToDTO(User user) {
-        return new UserDTO(
-                user.getId(),
-                user.getUsername(),
-                user.getEmail(),
-                user.getFirstName(),
-                user.getLastName(),
-                user.getRole(),
-                user.isEnabled(),
-                user.getAuthProvider()
-        );
-    }
-
 }

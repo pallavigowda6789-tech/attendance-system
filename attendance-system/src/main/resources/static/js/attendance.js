@@ -2,7 +2,7 @@
 
 let currentMonth = new Date().getMonth();
 let currentYear = new Date().getFullYear();
-let attendanceData = {}; // Store attendance records by date
+let attendanceData = {};
 
 document.addEventListener('DOMContentLoaded', function() {
     initializeAttendancePage();
@@ -23,42 +23,29 @@ function initializeAttendancePage() {
 // Load Attendance Data
 // ============================================
 async function loadAttendanceData() {
-    logger.functionStart('loadAttendanceData', {});
-    
     try {
-        logger.info('ATTENDANCE', 'Starting to load attendance data...');
-        
-        // Load all attendance records for current user
+        console.log('Loading attendance data...');
         const response = await ajax.get('/api/attendance/my-records', { page: 0, size: 1000 });
+        console.log('Full response:', response);
         
-        logger.api('ATTENDANCE', 'Received response from API', response);
-        
-        if (response.success) {
-            logger.success('ATTENDANCE', 'API call successful', response.data);
-            
-            // Convert to date-indexed object for easy lookup
-            const records = response.data.content || response.data || [];
-            logger.info('ATTENDANCE', `Found ${records.length} attendance records`, records.slice(0, 3));
+        if (response.success && response.data) {
+            // response.data is the unwrapped PagedResponse
+            const records = response.data.content || [];
+            console.log('Records count:', records.length);
             
             attendanceData = {};
             records.forEach(record => {
                 attendanceData[record.date] = record;
             });
-            
-            logger.success('ATTENDANCE', `Indexed ${Object.keys(attendanceData).length} dates`, {
-                dates: Object.keys(attendanceData).slice(0, 5),
-                totalDates: Object.keys(attendanceData).length
-            });
+            console.log('Attendance data keys:', Object.keys(attendanceData));
         } else {
-            logger.error('ATTENDANCE', 'API call failed', response);
+            console.error('API error:', response);
             app.showError(response.message || 'Failed to load attendance data');
         }
     } catch (error) {
-        logger.error('ATTENDANCE', 'Exception occurred while loading data', error);
+        console.error('Error loading attendance:', error);
         app.showError('Failed to load attendance data');
     }
-    
-    logger.functionEnd('loadAttendanceData', { recordCount: Object.keys(attendanceData).length });
 }
 
 // ============================================
@@ -66,15 +53,37 @@ async function loadAttendanceData() {
 // ============================================
 function updateCurrentDate() {
     const today = new Date();
-    document.getElementById('current-date').textContent = app.formatDate(today.toISOString());
+    const dateEl = document.getElementById('current-date');
+    if (dateEl) {
+        dateEl.textContent = app.formatDate(today.toISOString());
+    }
     checkTodayStatus();
 }
 
 async function checkTodayStatus() {
-    // TODO: Check if attendance is already marked for today
-    // const response = await ajax.get('/api/attendance/today');
-    const statusEl = document.getElementById('today-status');
-    statusEl.textContent = 'Not Marked Yet';
+    try {
+        const response = await ajax.get('/api/attendance/today-status');
+        const statusEl = document.getElementById('today-status');
+        if (!statusEl) return;
+        
+        if (response.success && response.data) {
+            const status = response.data;
+            if (status.marked) {
+                statusEl.textContent = status.present ? 'Present ✓' : 'Absent ✗';
+                if (status.checkedOut) {
+                    statusEl.textContent += ' (Checked Out)';
+                }
+            } else {
+                statusEl.textContent = 'Not Marked Yet';
+            }
+        } else {
+            statusEl.textContent = 'Not Marked Yet';
+        }
+    } catch (error) {
+        console.error('Error checking today status:', error);
+        const statusEl = document.getElementById('today-status');
+        if (statusEl) statusEl.textContent = 'Not Marked Yet';
+    }
 }
 
 // ============================================
@@ -91,25 +100,22 @@ function setupMarkAttendanceForm() {
         try {
             app.showLoading();
             
-            const response = await ajax.post('/api/attendance/mark', { 
-                present: true,
-                notes: notes
-            });
+            const response = await ajax.post('/api/attendance/mark', { present: true, notes: notes });
             
-            if (response.success && response.data.success) {
-                app.showSuccess(response.data.message || 'Attendance marked successfully!');
+            if (response.success) {
+                app.showSuccess(response.message || 'Attendance marked successfully!');
                 document.getElementById('today-status').textContent = 'Present ✓';
-                document.getElementById('notes').value = '';
-                // Reload data and re-render
+                const notesEl = document.getElementById('notes');
+                if (notesEl) notesEl.value = '';
                 await loadAttendanceData();
                 renderCalendar();
                 loadAttendanceHistory();
             } else {
-                app.showError(response.data?.message || response.message || 'Failed to mark attendance');
+                app.showError(response.message || 'Failed to mark attendance');
             }
         } catch (error) {
             console.error('Error marking attendance:', error);
-            app.showError('Failed to mark attendance. ' + (error.message || ''));
+            app.showError('Failed to mark attendance');
         } finally {
             app.hideLoading();
         }
@@ -120,24 +126,15 @@ function setupMarkAttendanceForm() {
 // Calendar Rendering
 // ============================================
 function renderCalendar() {
-    logger.functionStart('renderCalendar', { currentMonth, currentYear });
-    
     const grid = document.getElementById('calendar-grid');
     const monthYear = document.getElementById('calendar-month-year');
     
-    if (!grid || !monthYear) {
-        logger.warning('CALENDAR', 'Calendar elements not found', { grid: !!grid, monthYear: !!monthYear });
-        return;
-    }
+    if (!grid || !monthYear) return;
     
-    // Update month/year display
     const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
                         'July', 'August', 'September', 'October', 'November', 'December'];
     monthYear.textContent = `${monthNames[currentMonth]} ${currentYear}`;
     
-    logger.info('CALENDAR', `Rendering calendar for ${monthNames[currentMonth]} ${currentYear}`);
-    
-    // Clear grid
     grid.innerHTML = '';
     
     // Day headers
@@ -149,29 +146,17 @@ function renderCalendar() {
         grid.appendChild(header);
     });
     
-    // Get first day of month and number of days
     const firstDay = new Date(currentYear, currentMonth, 1).getDay();
     const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // Reset time for accurate comparison
+    today.setHours(0, 0, 0, 0);
     
-    logger.debug('CALENDAR', 'Calendar parameters', {
-        firstDay,
-        daysInMonth,
-        today: today.toISOString().split('T')[0],
-        attendanceDataKeys: Object.keys(attendanceData).length
-    });
-    
-    // Empty cells for days before month starts
+    // Empty cells before month starts
     for (let i = 0; i < firstDay; i++) {
         const emptyDay = document.createElement('div');
         emptyDay.className = 'calendar-day disabled';
         grid.appendChild(emptyDay);
     }
-    
-    let presentCount = 0;
-    let absentCount = 0;
-    let futureCount = 0;
     
     // Days of month
     for (let day = 1; day <= daysInMonth; day++) {
@@ -188,40 +173,21 @@ function renderCalendar() {
             dayEl.classList.add('today');
         }
         
-        // Check if date is in the future
+        // Future dates
         if (cellDate > today) {
             dayEl.classList.add('future');
-            futureCount++;
         } else {
-            // Check attendance status from loaded data
+            // Check attendance status
             const attendance = attendanceData[dateStr];
-            
             if (attendance) {
-                if (attendance.present) {
-                    dayEl.classList.add('present');
-                    presentCount++;
-                } else {
-                    dayEl.classList.add('absent');
-                    absentCount++;
-                }
+                dayEl.classList.add(attendance.present ? 'present' : 'absent');
             } else {
-                // No record = absent
                 dayEl.classList.add('absent');
-                absentCount++;
             }
         }
         
         grid.appendChild(dayEl);
     }
-    
-    logger.success('CALENDAR', 'Calendar rendered successfully', {
-        totalDays: daysInMonth,
-        present: presentCount,
-        absent: absentCount,
-        future: futureCount
-    });
-    
-    logger.functionEnd('renderCalendar', { success: true });
 }
 
 function setupCalendarNavigation() {
@@ -257,42 +223,31 @@ function setupCalendarNavigation() {
 // ============================================
 // Attendance History
 // ============================================
-let historyPage = 0; // Changed to 0-based to match API
+let historyPage = 0;
 const historyPerPage = 10;
 
 async function loadAttendanceHistory(page = 0) {
-    logger.functionStart('loadAttendanceHistory', { page });
-    
     try {
-        logger.info('HISTORY', `Loading attendance history for page ${page}`);
         app.showLoading();
         
         const response = await ajax.get('/api/attendance/my-records', { page: page, size: historyPerPage });
         
-        logger.api('HISTORY', 'Received history response', response);
-        
-        if (response.success) {
-            const apiData = response.data;
-            logger.success('HISTORY', 'History data loaded', apiData);
-            
-            const records = apiData.content || apiData || [];
-            logger.info('HISTORY', `Found ${records.length} history records`);
+        if (response.success && response.data) {
+            const pagedData = response.data;
+            const records = pagedData.content || [];
             
             renderHistoryTable(records);
-            updateHistoryPagination(apiData.totalPages || 1, page);
+            updateHistoryPagination(pagedData.totalPages || 1, page);
             historyPage = page;
         } else {
-            logger.error('HISTORY', 'Failed to load history', response);
             app.showError(response.message || 'Failed to load attendance history');
         }
     } catch (error) {
-        logger.error('HISTORY', 'Exception while loading history', error);
+        console.error('Error loading history:', error);
         app.showError('Failed to load attendance history');
     } finally {
         app.hideLoading();
     }
-    
-    logger.functionEnd('loadAttendanceHistory', { success: true });
 }
 
 function renderHistoryTable(records) {
@@ -312,7 +267,7 @@ function renderHistoryTable(records) {
                     ${record.present ? '✓ Present' : '✗ Absent'}
                 </span>
             </td>
-            <td>${app.formatDateTime(record.timestamp)}</td>
+            <td>${app.formatDateTime(record.checkInTime || record.timestamp)}</td>
             <td>${record.notes || '-'}</td>
         </tr>
     `).join('');
@@ -342,6 +297,5 @@ document.getElementById('next-page')?.addEventListener('click', function() {
 function setupExportButton() {
     document.getElementById('export-btn')?.addEventListener('click', function() {
         app.showInfo('Export functionality will be available soon');
-        // TODO: Implement export to CSV/PDF
     });
 }

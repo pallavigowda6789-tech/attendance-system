@@ -1,15 +1,14 @@
 // AJAX Helper Functions
 // Handles all HTTP requests with error handling and CSRF token support
+// Automatically unwraps ApiResponse format from backend
 
 // Get CSRF token from meta tag or cookie
 function getCsrfToken() {
-    // Try to get from meta tag first
     const metaTag = document.querySelector('meta[name="_csrf"]');
     if (metaTag) {
         return metaTag.getAttribute('content');
     }
     
-    // Try to get from cookie
     const cookieValue = document.cookie
         .split('; ')
         .find(row => row.startsWith('XSRF-TOKEN='));
@@ -23,13 +22,37 @@ function getCsrfHeader() {
     return metaTag ? metaTag.getAttribute('content') : 'X-CSRF-TOKEN';
 }
 
+/**
+ * Unwrap ApiResponse format from backend.
+ * Backend returns: { success: bool, message: string, data: T, timestamp: string, error: string, errorCode: int }
+ * This function extracts the actual data and normalizes the response.
+ */
+function unwrapApiResponse(response) {
+    // If response has ApiResponse structure, unwrap it
+    if (response && typeof response === 'object' && 'success' in response) {
+        return {
+            success: response.success,
+            data: response.data,
+            message: response.message || (response.success ? 'Success' : 'Error'),
+            error: response.error,
+            errorCode: response.errorCode,
+            timestamp: response.timestamp
+        };
+    }
+    // If not ApiResponse format, return as-is wrapped in success
+    return {
+        success: true,
+        data: response,
+        message: 'Success'
+    };
+}
+
 // ============================================
 // Base AJAX Function
 // ============================================
-async function ajax(url, options = {}) {
+async function doRequest(url, options = {}) {
     const requestId = `${options.method || 'GET'}-${Date.now()}`;
     
-    // Log request start
     if (window.logger) {
         logger.apiRequest(options.method || 'GET', url, options.body || options.params);
         logger.time(requestId);
@@ -43,7 +66,6 @@ async function ajax(url, options = {}) {
         credentials: 'same-origin'
     };
     
-    // Merge options
     const config = { ...defaultOptions, ...options };
     
     // Add CSRF token for non-GET requests
@@ -51,56 +73,39 @@ async function ajax(url, options = {}) {
         const csrfToken = getCsrfToken();
         if (csrfToken) {
             config.headers[getCsrfHeader()] = csrfToken;
-            if (window.logger) logger.debug('CSRF', 'Token added to request', { token: csrfToken.substring(0, 10) + '...' });
         }
     }
     
     // Convert body to JSON if it's an object
     if (config.body && typeof config.body === 'object' && !(config.body instanceof FormData)) {
         config.body = JSON.stringify(config.body);
-        if (window.logger) logger.debug('AJAX', 'Request body stringified', config.body);
     }
     
     try {
-        if (window.logger) logger.info('AJAX', `Fetching: ${url}`, config);
-        
         const response = await fetch(url, config);
-        
-        // Handle different response types
         const contentType = response.headers.get('content-type');
-        let data;
+        let rawData;
         
         if (contentType && contentType.includes('application/json')) {
-            data = await response.json();
-            if (window.logger) logger.debug('AJAX', 'Response parsed as JSON', data);
+            rawData = await response.json();
         } else {
-            data = await response.text();
-            if (window.logger) logger.debug('AJAX', 'Response parsed as text', data);
+            rawData = await response.text();
         }
         
-        // Check if response is OK
+        // Unwrap ApiResponse format
+        const result = unwrapApiResponse(rawData);
+        result.httpStatus = response.status;
+        
+        // Handle HTTP errors
         if (!response.ok) {
             if (window.logger) {
-                logger.error('AJAX', `HTTP ${response.status} ${response.statusText}`, {
-                    url,
-                    status: response.status,
-                    statusText: response.statusText,
-                    data
-                });
+                logger.error('AJAX', `HTTP ${response.status}`, { url, data: result });
             }
-            
-            throw {
-                status: response.status,
-                statusText: response.statusText,
-                data: data
-            };
+            result.success = false;
+            if (!result.message || result.message === 'Success') {
+                result.message = result.error || response.statusText || 'Request failed';
+            }
         }
-        
-        const result = {
-            success: true,
-            data: data,
-            status: response.status
-        };
         
         if (window.logger) {
             logger.apiResponse(options.method || 'GET', url, result);
@@ -113,18 +118,15 @@ async function ajax(url, options = {}) {
         console.error('AJAX Error:', error);
         
         if (window.logger) {
-            logger.error('AJAX', 'Request failed', {
-                url,
-                error: error.message || error,
-                stack: error.stack
-            });
+            logger.error('AJAX', 'Request failed', { url, error: error.message });
             logger.timeEnd(requestId);
         }
         
         return {
             success: false,
-            error: error,
-            message: error.data?.message || error.statusText || 'An error occurred'
+            data: null,
+            message: error.message || 'Network error occurred',
+            error: error
         };
     }
 }
@@ -133,47 +135,24 @@ async function ajax(url, options = {}) {
 // HTTP Method Wrappers
 // ============================================
 
-// GET request
-async function get(url, params = {}) {
-    if (window.logger) logger.functionStart('ajax.get', { url, params });
-    
-    // Add query parameters to URL
+async function ajaxGet(url, params = {}) {
     if (Object.keys(params).length > 0) {
         const queryString = new URLSearchParams(params).toString();
         url = `${url}?${queryString}`;
-        if (window.logger) logger.debug('AJAX', 'Query string built', { original: url.split('?')[0], full: url });
     }
-    
-    const result = await ajax(url, { method: 'GET' });
-    
-    if (window.logger) logger.functionEnd('ajax.get', result);
-    return result;
+    return await doRequest(url, { method: 'GET' });
 }
 
-// POST request
-async function post(url, data = {}) {
-    if (window.logger) logger.functionStart('ajax.post', { url, data });
-    
-    const result = await ajax(url, {
-        method: 'POST',
-        body: data
-    });
-    
-    if (window.logger) logger.functionEnd('ajax.post', result);
-    return result;
+async function ajaxPost(url, data = {}) {
+    return await doRequest(url, { method: 'POST', body: data });
 }
 
-// PUT request
-async function put(url, data = {}) {
-    return await ajax(url, {
-        method: 'PUT',
-        body: data
-    });
+async function ajaxPut(url, data = {}) {
+    return await doRequest(url, { method: 'PUT', body: data });
 }
 
-// DELETE request
-async function del(url) {
-    return await ajax(url, { method: 'DELETE' });
+async function ajaxDelete(url) {
+    return await doRequest(url, { method: 'DELETE' });
 }
 
 // ============================================
@@ -184,12 +163,11 @@ async function submitForm(formElement, url, method = 'POST') {
     const data = Object.fromEntries(formData.entries());
     
     if (method === 'POST') {
-        return await post(url, data);
+        return await ajaxPost(url, data);
     } else if (method === 'PUT') {
-        return await put(url, data);
+        return await ajaxPut(url, data);
     }
-    
-    return await ajax(url, { method, body: data });
+    return await doRequest(url, { method, body: data });
 }
 
 // ============================================
@@ -198,12 +176,10 @@ async function submitForm(formElement, url, method = 'POST') {
 async function uploadFile(url, fileInput, additionalData = {}) {
     const formData = new FormData();
     
-    // Add file
     if (fileInput.files && fileInput.files[0]) {
         formData.append('file', fileInput.files[0]);
     }
     
-    // Add additional data
     for (const [key, value] of Object.entries(additionalData)) {
         formData.append(key, value);
     }
@@ -222,54 +198,35 @@ async function uploadFile(url, fileInput, additionalData = {}) {
             credentials: 'same-origin'
         });
         
-        const data = await response.json();
+        const rawData = await response.json();
+        const result = unwrapApiResponse(rawData);
+        result.httpStatus = response.status;
         
         if (!response.ok) {
-            throw {
-                status: response.status,
-                statusText: response.statusText,
-                data: data
-            };
+            result.success = false;
         }
         
-        return {
-            success: true,
-            data: data,
-            status: response.status
-        };
+        return result;
         
     } catch (error) {
         return {
             success: false,
-            error: error,
-            message: error.data?.message || error.statusText || 'File upload failed'
+            data: null,
+            message: error.message || 'File upload failed',
+            error: error
         };
     }
 }
 
-// ============================================
-// Mock Data Helper (for development/testing)
-// ============================================
-function mockResponse(data, delay = 500) {
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            resolve({
-                success: true,
-                data: data
-            });
-        }, delay);
-    });
-}
-
 // Export functions to global scope
 window.ajax = {
-    get,
-    post,
-    put,
-    delete: del,
-    ajax,
+    get: ajaxGet,
+    post: ajaxPost,
+    put: ajaxPut,
+    delete: ajaxDelete,
+    request: doRequest,
     submitForm,
     uploadFile,
     getCsrfToken,
-    mockResponse
+    unwrapApiResponse
 };

@@ -1,9 +1,15 @@
 package com.example.attendance_system.controller;
 
+import com.example.attendance_system.dto.ApiResponse;
 import com.example.attendance_system.dto.AttendanceDTO;
 import com.example.attendance_system.dto.AttendanceStatsDTO;
+import com.example.attendance_system.dto.PagedResponse;
+import com.example.attendance_system.exception.DuplicateResourceException;
+import com.example.attendance_system.exception.InvalidOperationException;
 import com.example.attendance_system.service.AttendanceService;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -23,6 +29,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@DisplayName("AttendanceRestController Tests")
 class AttendanceRestControllerTest {
 
     @Mock
@@ -37,68 +44,180 @@ class AttendanceRestControllerTest {
     @BeforeEach
     void setUp() {
         attendanceDTO = new AttendanceDTO(1L, 1L, "testuser", LocalDate.now(), true, LocalDateTime.now());
-        statsDTO = new AttendanceStatsDTO(10L, 8L, 2L, 80.0, 
-                LocalDate.now().withDayOfMonth(1), 
+        statsDTO = new AttendanceStatsDTO(10L, 8L, 2L, 80.0,
+                LocalDate.now().withDayOfMonth(1),
                 LocalDate.now().withDayOfMonth(LocalDate.now().lengthOfMonth()));
     }
 
-    @Test
-    void testGetMyStats() {
-        when(attendanceService.getCurrentUserStats()).thenReturn(statsDTO);
+    @Nested
+    @DisplayName("Get Stats Tests")
+    class GetStatsTests {
 
-        ResponseEntity<AttendanceStatsDTO> response = attendanceRestController.getMyStats();
+        @Test
+        @DisplayName("Should get my stats successfully")
+        void getMyStats_Success() {
+            when(attendanceService.getCurrentUserStats()).thenReturn(statsDTO);
 
-        assertNotNull(response);
-        assertEquals(200, response.getStatusCode().value());
-        assertEquals(10L, response.getBody().getTotalDays());
-        assertEquals(8L, response.getBody().getPresentDays());
-        verify(attendanceService, times(1)).getCurrentUserStats();
+            ResponseEntity<ApiResponse<AttendanceStatsDTO>> response = attendanceRestController.getMyStats();
+
+            assertNotNull(response);
+            assertEquals(200, response.getStatusCode().value());
+            assertTrue(response.getBody().isSuccess());
+            assertEquals(10L, response.getBody().getData().getTotalDays());
+            assertEquals(8L, response.getBody().getData().getPresentDays());
+            verify(attendanceService, times(1)).getCurrentUserStats();
+        }
     }
 
-    @Test
-    void testGetMyRecords() {
-        List<AttendanceDTO> records = Arrays.asList(attendanceDTO);
-        when(attendanceService.getCurrentUserAttendance()).thenReturn(records);
+    @Nested
+    @DisplayName("Get Records Tests")
+    class GetRecordsTests {
 
-        ResponseEntity<?> response = attendanceRestController.getMyRecords(0, 10, null, null);
+        @Test
+        @DisplayName("Should get my records with pagination")
+        void getMyRecords_Success() {
+            List<AttendanceDTO> records = Arrays.asList(attendanceDTO);
+            PagedResponse<AttendanceDTO> pagedResponse = PagedResponse.of(records, 0, 10, 1);
+            when(attendanceService.getCurrentUserAttendancePaginated(0, 10, null, null))
+                    .thenReturn(pagedResponse);
 
-        assertNotNull(response);
-        assertEquals(200, response.getStatusCode().value());
-        verify(attendanceService, times(1)).getCurrentUserAttendance();
+            ResponseEntity<ApiResponse<PagedResponse<AttendanceDTO>>> response =
+                    attendanceRestController.getMyRecords(0, 10, null, null);
+
+            assertNotNull(response);
+            assertEquals(200, response.getStatusCode().value());
+            assertTrue(response.getBody().isSuccess());
+            verify(attendanceService, times(1)).getCurrentUserAttendancePaginated(0, 10, null, null);
+        }
+
+        @Test
+        @DisplayName("Should get my records with date filter")
+        void getMyRecords_WithDateFilter() {
+            LocalDate startDate = LocalDate.now().minusDays(7);
+            LocalDate endDate = LocalDate.now();
+            List<AttendanceDTO> records = Arrays.asList(attendanceDTO);
+            PagedResponse<AttendanceDTO> pagedResponse = PagedResponse.of(records, 0, 10, 1);
+
+            when(attendanceService.getCurrentUserAttendancePaginated(0, 10, startDate, endDate))
+                    .thenReturn(pagedResponse);
+
+            ResponseEntity<ApiResponse<PagedResponse<AttendanceDTO>>> response =
+                    attendanceRestController.getMyRecords(0, 10, startDate, endDate);
+
+            assertNotNull(response);
+            assertEquals(200, response.getStatusCode().value());
+        }
     }
 
-    @Test
-    void testMarkAttendance() {
-        when(attendanceService.markAttendanceForCurrentUser(anyBoolean())).thenReturn(attendanceDTO);
+    @Nested
+    @DisplayName("Mark Attendance Tests")
+    class MarkAttendanceTests {
 
-        Map<String, Boolean> request = new HashMap<>();
-        request.put("present", true);
+        @Test
+        @DisplayName("Should mark attendance successfully")
+        void markAttendance_Success() {
+            when(attendanceService.markAttendanceForCurrentUser(anyBoolean())).thenReturn(attendanceDTO);
 
-        ResponseEntity<?> response = attendanceRestController.markAttendance(request);
+            Map<String, Object> request = new HashMap<>();
+            request.put("present", true);
 
-        assertEquals(200, response.getStatusCode().value());
-        verify(attendanceService, times(1)).markAttendanceForCurrentUser(true);
+            ResponseEntity<ApiResponse<AttendanceDTO>> response = attendanceRestController.markAttendance(request);
+
+            assertEquals(200, response.getStatusCode().value());
+            assertTrue(response.getBody().isSuccess());
+            assertEquals("Attendance marked successfully", response.getBody().getMessage());
+            verify(attendanceService, times(1)).markAttendanceForCurrentUser(true);
+        }
+
+        @Test
+        @DisplayName("Should mark attendance as absent")
+        void markAttendance_Absent() {
+            when(attendanceService.markAttendanceForCurrentUser(false)).thenReturn(attendanceDTO);
+
+            Map<String, Object> request = new HashMap<>();
+            request.put("present", false);
+
+            ResponseEntity<ApiResponse<AttendanceDTO>> response = attendanceRestController.markAttendance(request);
+
+            assertEquals(200, response.getStatusCode().value());
+            verify(attendanceService, times(1)).markAttendanceForCurrentUser(false);
+        }
+
+        @Test
+        @DisplayName("Should default to present when no body provided")
+        void markAttendance_DefaultToPresent() {
+            when(attendanceService.markAttendanceForCurrentUser(true)).thenReturn(attendanceDTO);
+
+            ResponseEntity<ApiResponse<AttendanceDTO>> response = attendanceRestController.markAttendance(null);
+
+            assertEquals(200, response.getStatusCode().value());
+            verify(attendanceService, times(1)).markAttendanceForCurrentUser(true);
+        }
     }
 
-    @Test
-    void testMarkAttendance_AlreadyMarked() {
-        when(attendanceService.markAttendanceForCurrentUser(anyBoolean()))
-                .thenThrow(new RuntimeException("Attendance already marked for this date"));
+    @Nested
+    @DisplayName("Get User Attendance Tests")
+    class GetUserAttendanceTests {
 
-        Map<String, Boolean> request = new HashMap<>();
-        request.put("present", true);
+        @Test
+        @DisplayName("Should get attendance for specific user")
+        void getUserAttendance_Success() {
+            List<AttendanceDTO> records = Arrays.asList(attendanceDTO);
+            when(attendanceService.getAttendanceByUser(1L)).thenReturn(records);
 
-        ResponseEntity<?> response = attendanceRestController.markAttendance(request);
+            ResponseEntity<ApiResponse<List<AttendanceDTO>>> response =
+                    attendanceRestController.getUserAttendance(1L);
 
-        assertEquals(400, response.getStatusCode().value());
+            assertNotNull(response);
+            assertEquals(200, response.getStatusCode().value());
+            assertTrue(response.getBody().isSuccess());
+            assertEquals(1, response.getBody().getData().size());
+        }
+
+        @Test
+        @DisplayName("Should get attendance by date range")
+        void getAttendanceByRange_Success() {
+            LocalDate startDate = LocalDate.now().minusDays(7);
+            LocalDate endDate = LocalDate.now();
+            List<AttendanceDTO> records = Arrays.asList(attendanceDTO);
+
+            when(attendanceService.getAttendanceByDateRange(1L, startDate, endDate)).thenReturn(records);
+
+            ResponseEntity<ApiResponse<List<AttendanceDTO>>> response =
+                    attendanceRestController.getAttendanceByRange(1L, startDate, endDate);
+
+            assertNotNull(response);
+            assertEquals(200, response.getStatusCode().value());
+            assertTrue(response.getBody().isSuccess());
+        }
     }
 
-    @Test
-    void testGetMyStats_Error() {
-        when(attendanceService.getCurrentUserStats()).thenThrow(new RuntimeException("Error"));
+    @Nested
+    @DisplayName("Today's Attendance Tests")
+    class TodayAttendanceTests {
 
-        ResponseEntity<AttendanceStatsDTO> response = attendanceRestController.getMyStats();
+        @Test
+        @DisplayName("Should check today's attendance status")
+        void checkTodayStatus_NotMarked() {
+            when(attendanceService.getCurrentUserAttendance()).thenReturn(List.of());
 
-        assertEquals(400, response.getStatusCode().value());
+            ResponseEntity<ApiResponse<Map<String, Boolean>>> response =
+                    attendanceRestController.checkTodayStatus();
+
+            assertEquals(200, response.getStatusCode().value());
+            assertFalse(response.getBody().getData().get("marked"));
+        }
+
+        @Test
+        @DisplayName("Should return marked=true when attendance exists for today")
+        void checkTodayStatus_Marked() {
+            when(attendanceService.getCurrentUserAttendance()).thenReturn(Arrays.asList(attendanceDTO));
+
+            ResponseEntity<ApiResponse<Map<String, Boolean>>> response =
+                    attendanceRestController.checkTodayStatus();
+
+            assertEquals(200, response.getStatusCode().value());
+            assertTrue(response.getBody().getData().get("marked"));
+        }
     }
 }

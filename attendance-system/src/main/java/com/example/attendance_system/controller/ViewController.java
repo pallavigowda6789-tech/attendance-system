@@ -7,6 +7,9 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 
+/**
+ * Controller for serving Thymeleaf view pages.
+ */
 @Controller
 public class ViewController {
 
@@ -18,26 +21,36 @@ public class ViewController {
         this.userService = userService;
     }
 
-    // Home Page
+    /**
+     * Home page.
+     */
     @GetMapping("/")
     public String home() {
         return "home";
     }
 
-    // Dashboard Page
+    /**
+     * Dashboard page with attendance statistics.
+     */
     @GetMapping("/dashboard")
     public String dashboard(Model model) {
         UserDTO currentUser = userService.getCurrentUser();
         model.addAttribute("user", currentUser);
-        
-        // Get stats for the dashboard
-        var stats = attendanceService.getCurrentUserStats();
-        model.addAttribute("stats", stats);
-        
+
+        try {
+            var stats = attendanceService.getCurrentUserStats();
+            model.addAttribute("stats", stats);
+        } catch (Exception e) {
+            // Provide default stats if not available
+            model.addAttribute("stats", new com.example.attendance_system.dto.AttendanceStatsDTO());
+        }
+
         return "dashboard";
     }
 
-    // Attendance Page
+    /**
+     * Attendance records page.
+     */
     @GetMapping("/attendance")
     public String attendance(Model model) {
         UserDTO currentUser = userService.getCurrentUser();
@@ -45,7 +58,9 @@ public class ViewController {
         return "user/attendance";
     }
 
-    // Profile Page
+    /**
+     * User profile page.
+     */
     @GetMapping("/profile")
     public String profile(Model model) {
         UserDTO currentUser = userService.getCurrentUser();
@@ -53,7 +68,9 @@ public class ViewController {
         return "user/profile";
     }
 
-    // Admin Users Page
+    /**
+     * Admin users management page.
+     */
     @GetMapping("/admin/users")
     public String adminUsers(Model model) {
         UserDTO currentUser = userService.getCurrentUser();

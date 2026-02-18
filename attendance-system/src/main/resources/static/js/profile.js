@@ -15,121 +15,140 @@ function initializeProfilePage() {
 // ============================================
 async function loadProfileData() {
     try {
-        // TODO: Replace with actual API call
-        // const response = await ajax.get('/api/users/profile');
+        app.showLoading();
         
-        const mockProfile = {
-            firstName: 'John',
-            lastName: 'Doe',
-            username: 'johndoe',
-            email: 'john.doe@example.com',
-            role: 'USER',
-            authProvider: 'LOCAL',
-            createdAt: '2024-01-15T10:00:00',
-            stats: {
-                totalDays: 45,
-                presentDays: 38,
-                attendanceRate: 84
-            }
-        };
+        const response = await ajax.get('/api/users/profile');
         
-        const response = await ajax.mockResponse(mockProfile);
-        
-        if (response.success) {
+        if (response.success && response.data) {
+            // response.data is now the unwrapped UserDTO
             displayProfileData(response.data);
+            loadAttendanceStats();
+        } else {
+            app.showError(response.message || 'Failed to load profile');
         }
     } catch (error) {
         console.error('Error loading profile:', error);
+        app.showError('Failed to load profile');
+    } finally {
+        app.hideLoading();
+    }
+}
+
+async function loadAttendanceStats() {
+    try {
+        const response = await ajax.get('/api/attendance/my-stats');
+        if (response.success && response.data) {
+            // response.data is now the unwrapped AttendanceStatsDTO
+            const stats = response.data;
+            const totalEl = document.getElementById('total-attendance');
+            const presentEl = document.getElementById('present-days');
+            const rateEl = document.getElementById('attendance-rate');
+            
+            if (totalEl) totalEl.textContent = stats.totalDays || 0;
+            if (presentEl) presentEl.textContent = stats.presentDays || 0;
+            if (rateEl) rateEl.textContent = (stats.attendancePercentage || 0).toFixed(1) + '%';
+        }
+    } catch (error) {
+        console.error('Error loading stats:', error);
     }
 }
 
 function displayProfileData(profile) {
     // Header
-    document.getElementById('profile-avatar').textContent = profile.firstName.charAt(0).toUpperCase();
-    document.getElementById('profile-name').textContent = `${profile.firstName} ${profile.lastName}`;
-    document.getElementById('profile-email').textContent = profile.email;
-    document.getElementById('auth-method').textContent = profile.authProvider === 'LOCAL' ? 'Local Account' : 'SSO Account';
+    const avatar = document.getElementById('profile-avatar');
+    if (avatar && profile.firstName) {
+        avatar.textContent = profile.firstName.charAt(0).toUpperCase();
+    }
     
-    // View mode
-    document.getElementById('view-firstName').textContent = profile.firstName;
-    document.getElementById('view-lastName').textContent = profile.lastName;
-    document.getElementById('view-username').textContent = profile.username;
-    document.getElementById('view-email').textContent = profile.email;
-    document.getElementById('view-role').textContent = profile.role;
-    document.getElementById('view-createdAt').textContent = app.formatDate(profile.createdAt);
+    const fullName = profile.fullName || `${profile.firstName || ''} ${profile.lastName || ''}`.trim();
+    const nameEl = document.getElementById('profile-name');
+    const emailEl = document.getElementById('profile-email');
+    const authEl = document.getElementById('auth-method');
     
-    // Stats
-    document.getElementById('total-attendance').textContent = profile.stats.totalDays;
-    document.getElementById('present-days').textContent = profile.stats.presentDays;
-    document.getElementById('attendance-rate').textContent = profile.stats.attendanceRate + '%';
+    if (nameEl) nameEl.textContent = fullName || profile.username;
+    if (emailEl) emailEl.textContent = profile.email || '';
+    if (authEl) {
+        authEl.textContent = profile.provider === 'LOCAL' ? 'Local Account' : 
+            profile.provider === 'GOOGLE' ? 'Google Account' :
+            profile.provider === 'GITHUB' ? 'GitHub Account' : 'SSO Account';
+    }
+    
+    // View mode fields
+    const viewFields = {
+        'view-firstName': profile.firstName || '-',
+        'view-lastName': profile.lastName || '-',
+        'view-username': profile.username || '-',
+        'view-email': profile.email || '-',
+        'view-role': profile.role || '-',
+        'view-createdAt': profile.createdAt ? app.formatDate(profile.createdAt) : '-'
+    };
+    
+    for (const [id, value] of Object.entries(viewFields)) {
+        const el = document.getElementById(id);
+        if (el) el.textContent = value;
+    }
     
     // Store current data for edit mode
     window.currentProfile = profile;
+    
+    // Hide password change for OAuth users
+    if (profile.provider !== 'LOCAL') {
+        const passwordSection = document.getElementById('password-change-section');
+        if (passwordSection) passwordSection.style.display = 'none';
+    }
 }
 
 // ============================================
 // Edit Mode
 // ============================================
 function setupEditMode() {
-    const editBtn = document.getElementById('edit-profile-btn');
-    const cancelBtn = document.getElementById('cancel-edit-btn');
-    const editForm = document.getElementById('edit-profile-form');
-    
-    editBtn?.addEventListener('click', function() {
-        enterEditMode();
-    });
-    
-    cancelBtn?.addEventListener('click', function() {
-        exitEditMode();
-    });
-    
-    editForm?.addEventListener('submit', async function(e) {
+    document.getElementById('edit-profile-btn')?.addEventListener('click', enterEditMode);
+    document.getElementById('cancel-edit-btn')?.addEventListener('click', exitEditMode);
+    document.getElementById('edit-profile-form')?.addEventListener('submit', async function(e) {
         e.preventDefault();
         await saveProfile();
     });
 }
 
 function enterEditMode() {
-    // Hide view mode, show edit mode
-    document.getElementById('profile-view-mode').classList.add('hidden');
-    document.getElementById('profile-edit-mode').classList.add('active');
+    document.getElementById('profile-view-mode')?.classList.add('hidden');
+    document.getElementById('profile-edit-mode')?.classList.add('active');
     
-    // Populate form with current data
     if (window.currentProfile) {
-        document.getElementById('firstName').value = window.currentProfile.firstName;
-        document.getElementById('lastName').value = window.currentProfile.lastName;
-        document.getElementById('email').value = window.currentProfile.email;
+        const firstNameEl = document.getElementById('firstName');
+        const lastNameEl = document.getElementById('lastName');
+        const emailEl = document.getElementById('email');
+        
+        if (firstNameEl) firstNameEl.value = window.currentProfile.firstName || '';
+        if (lastNameEl) lastNameEl.value = window.currentProfile.lastName || '';
+        if (emailEl) emailEl.value = window.currentProfile.email || '';
     }
 }
 
 function exitEditMode() {
-    // Show view mode, hide edit mode
-    document.getElementById('profile-view-mode').classList.remove('hidden');
-    document.getElementById('profile-edit-mode').classList.remove('active');
+    document.getElementById('profile-view-mode')?.classList.remove('hidden');
+    document.getElementById('profile-edit-mode')?.classList.remove('active');
 }
 
 async function saveProfile() {
     const formData = {
-        firstName: document.getElementById('firstName').value.trim(),
-        lastName: document.getElementById('lastName').value.trim(),
-        email: document.getElementById('email').value.trim()
+        id: window.currentProfile?.id,
+        firstName: document.getElementById('firstName')?.value.trim(),
+        lastName: document.getElementById('lastName')?.value.trim(),
+        email: document.getElementById('email')?.value.trim()
     };
     
     try {
         app.showLoading();
         
-        // TODO: Replace with actual API call
-        // const response = await ajax.put('/api/users/profile', formData);
-        
-        const response = await ajax.mockResponse({
-            success: true,
-            message: 'Profile updated successfully'
-        });
+        const response = await ajax.put('/api/users/profile', formData);
         
         if (response.success) {
-            app.showSuccess('Profile updated successfully!');
+            app.showSuccess(response.message || 'Profile updated successfully!');
             exitEditMode();
-            loadProfileData(); // Reload to show updated data
+            loadProfileData();
+        } else {
+            app.showError(response.message || 'Failed to update profile');
         }
     } catch (error) {
         app.showError('Failed to update profile');
@@ -146,22 +165,20 @@ function setupPasswordChange() {
     const newPasswordInput = document.getElementById('newPassword');
     const confirmPasswordInput = document.getElementById('confirmNewPassword');
     
-    // Real-time password validation
     newPasswordInput?.addEventListener('input', function() {
         validatePasswordRequirements(this.value);
     });
     
-    // Confirm password match
     confirmPasswordInput?.addEventListener('input', function() {
-        const newPassword = newPasswordInput.value;
+        const newPassword = newPasswordInput?.value || '';
         const confirmPassword = this.value;
         const errorEl = document.getElementById('confirm-password-error');
         
         if (confirmPassword && newPassword !== confirmPassword) {
-            errorEl.textContent = 'Passwords do not match';
+            if (errorEl) errorEl.textContent = 'Passwords do not match';
             this.classList.add('error');
         } else {
-            errorEl.textContent = '';
+            if (errorEl) errorEl.textContent = '';
             this.classList.remove('error');
         }
     });
@@ -182,29 +199,24 @@ function validatePasswordRequirements(password) {
     };
     
     for (const [id, isValid] of Object.entries(requirements)) {
-        const element = document.getElementById(id);
-        if (element) {
-            if (isValid) {
-                element.classList.add('valid');
-            } else {
-                element.classList.remove('valid');
-            }
+        const el = document.getElementById(id);
+        if (el) {
+            el.classList.toggle('valid', isValid);
         }
     }
 }
 
 async function changePassword() {
-    const currentPassword = document.getElementById('currentPassword').value;
-    const newPassword = document.getElementById('newPassword').value;
-    const confirmPassword = document.getElementById('confirmNewPassword').value;
+    const currentPassword = document.getElementById('currentPassword')?.value;
+    const newPassword = document.getElementById('newPassword')?.value;
+    const confirmPassword = document.getElementById('confirmNewPassword')?.value;
     
-    // Validation
     if (newPassword !== confirmPassword) {
         app.showError('Passwords do not match');
         return;
     }
     
-    if (newPassword.length < 8) {
+    if (!newPassword || newPassword.length < 8) {
         app.showError('Password must be at least 8 characters');
         return;
     }
@@ -212,24 +224,20 @@ async function changePassword() {
     try {
         app.showLoading();
         
-        // TODO: Replace with actual API call
-        // const response = await ajax.post('/api/users/change-password', {
-        //     currentPassword,
-        //     newPassword
-        // });
-        
-        const response = await ajax.mockResponse({
-            success: true,
-            message: 'Password changed successfully'
+        const response = await ajax.post('/api/users/change-password', {
+            currentPassword: currentPassword,
+            newPassword: newPassword,
+            confirmPassword: confirmPassword
         });
         
         if (response.success) {
-            app.showSuccess('Password changed successfully!');
-            document.getElementById('change-password-form').reset();
-            // Clear validation states
+            app.showSuccess(response.message || 'Password changed successfully!');
+            document.getElementById('change-password-form')?.reset();
             document.querySelectorAll('#password-requirements-list li').forEach(el => {
                 el.classList.remove('valid');
             });
+        } else {
+            app.showError(response.message || 'Failed to change password');
         }
     } catch (error) {
         app.showError('Failed to change password');

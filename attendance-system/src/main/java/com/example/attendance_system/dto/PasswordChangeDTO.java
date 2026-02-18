@@ -3,13 +3,16 @@ package com.example.attendance_system.dto;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
+/**
+ * Data Transfer Object for password change requests.
+ */
 public class PasswordChangeDTO {
 
     @NotBlank(message = "Current password is required")
     private String currentPassword;
 
     @NotBlank(message = "New password is required")
-    @Size(min = 6, message = "Password must be at least 6 characters")
+    @Size(min = 6, max = 100, message = "Password must be between 6 and 100 characters")
     private String newPassword;
 
     @NotBlank(message = "Confirm password is required")
@@ -22,6 +25,15 @@ public class PasswordChangeDTO {
         this.currentPassword = currentPassword;
         this.newPassword = newPassword;
         this.confirmPassword = confirmPassword;
+    }
+
+    // Validation helper
+    public boolean isPasswordMatching() {
+        return newPassword != null && newPassword.equals(confirmPassword);
+    }
+
+    public boolean isNewPasswordDifferent() {
+        return currentPassword != null && !currentPassword.equals(newPassword);
     }
 
     // Getters and Setters

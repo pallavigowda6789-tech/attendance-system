@@ -23,18 +23,38 @@ async function loadUsers(page = 1, search = '') {
     try {
         app.showLoading();
         
-        // TODO: Replace with actual API call
-        // const response = await ajax.get('/api/admin/users', { page, size: usersPerPage, search });
+        const response = await ajax.get('/api/admin/users');
         
-        const mockUsers = generateMockUsers(page, search);
-        const response = await ajax.mockResponse(mockUsers);
-        
-        if (response.success) {
-            renderUsersTable(response.data.users);
-            updatePagination(response.data.totalPages, page);
+        if (response.success && response.data) {
+            // response.data is now the unwrapped List<UserDTO>
+            const users = Array.isArray(response.data) ? response.data : [];
+            
+            // Client-side filtering
+            let filteredUsers = users;
+            if (search) {
+                const searchLower = search.toLowerCase();
+                filteredUsers = users.filter(u => 
+                    u.username?.toLowerCase().includes(searchLower) ||
+                    u.email?.toLowerCase().includes(searchLower) ||
+                    u.firstName?.toLowerCase().includes(searchLower) ||
+                    u.lastName?.toLowerCase().includes(searchLower)
+                );
+            }
+            
+            // Client-side pagination
+            const startIndex = (page - 1) * usersPerPage;
+            const endIndex = startIndex + usersPerPage;
+            const pageUsers = filteredUsers.slice(startIndex, endIndex);
+            const totalPages = Math.ceil(filteredUsers.length / usersPerPage) || 1;
+            
+            renderUsersTable(pageUsers);
+            updatePagination(totalPages, page);
             currentPage = page;
+        } else {
+            app.showError(response.message || 'Failed to load users');
         }
     } catch (error) {
+        console.error('Error loading users:', error);
         app.showError('Failed to load users');
     } finally {
         app.hideLoading();
@@ -45,7 +65,7 @@ function renderUsersTable(users) {
     const tbody = document.getElementById('users-tbody');
     if (!tbody) return;
     
-    if (users.length === 0) {
+    if (!users || users.length === 0) {
         tbody.innerHTML = '<tr><td colspan="7" class="no-data">No users found</td></tr>';
         return;
     }
@@ -53,16 +73,16 @@ function renderUsersTable(users) {
     tbody.innerHTML = users.map(user => `
         <tr>
             <td>${user.id}</td>
-            <td>${user.firstName} ${user.lastName}</td>
-            <td>${user.email}</td>
-            <td><span class="badge role-badge badge-info">${user.role}</span></td>
+            <td>${user.firstName || ''} ${user.lastName || ''}</td>
+            <td>${user.email || ''}</td>
+            <td><span class="badge role-badge badge-info">${user.role || 'USER'}</span></td>
             <td>
                 <span class="user-status">
                     <span class="status-indicator ${user.enabled ? 'active' : 'inactive'}"></span>
                     ${user.enabled ? 'Active' : 'Inactive'}
                 </span>
             </td>
-            <td>${app.formatDate(user.createdAt)}</td>
+            <td>${user.createdAt ? app.formatDate(user.createdAt) : '-'}</td>
             <td>
                 <div class="table-actions">
                     <button class="action-btn" onclick="editUser(${user.id})" title="Edit">✏️</button>
@@ -103,58 +123,61 @@ function openUserModal(userId = null) {
     const title = document.getElementById('modal-title');
     const form = document.getElementById('user-form');
     
-    form.reset();
-    document.getElementById('user-id').value = '';
+    if (form) form.reset();
+    const userIdEl = document.getElementById('user-id');
+    if (userIdEl) userIdEl.value = '';
     
     if (userId) {
-        title.textContent = 'Edit User';
+        if (title) title.textContent = 'Edit User';
         loadUserData(userId);
     } else {
-        title.textContent = 'Add User';
+        if (title) title.textContent = 'Add User';
     }
     
-    modal.style.display = 'flex';
+    if (modal) modal.style.display = 'flex';
 }
 
 function closeUserModal() {
     const modal = document.getElementById('user-modal');
-    modal.style.display = 'none';
+    if (modal) modal.style.display = 'none';
 }
 
 async function loadUserData(userId) {
     try {
-        // TODO: Replace with actual API call
-        // const response = await ajax.get(`/api/admin/users/${userId}`);
+        app.showLoading();
         
-        const mockUser = {
-            id: userId,
-            firstName: 'John',
-            lastName: 'Doe',
-            email: 'john.doe@example.com',
-            username: 'johndoe',
-            role: 'USER',
-            enabled: true
-        };
+        const response = await ajax.get(`/api/admin/users/${userId}`);
         
-        const response = await ajax.mockResponse(mockUser);
-        
-        if (response.success) {
+        if (response.success && response.data) {
             const user = response.data;
-            document.getElementById('user-id').value = user.id;
-            document.getElementById('user-firstName').value = user.firstName;
-            document.getElementById('user-lastName').value = user.lastName;
-            document.getElementById('user-email').value = user.email;
-            document.getElementById('user-username').value = user.username;
-            document.getElementById('user-role').value = user.role;
-            document.getElementById('user-enabled').checked = user.enabled;
+            const fields = {
+                'user-id': user.id,
+                'user-firstName': user.firstName || '',
+                'user-lastName': user.lastName || '',
+                'user-email': user.email || '',
+                'user-username': user.username || '',
+                'user-role': user.role || 'USER'
+            };
+            
+            for (const [id, value] of Object.entries(fields)) {
+                const el = document.getElementById(id);
+                if (el) el.value = value;
+            }
+            
+            const enabledEl = document.getElementById('user-enabled');
+            if (enabledEl) enabledEl.checked = user.enabled !== false;
+        } else {
+            app.showError(response.message || 'Failed to load user data');
         }
     } catch (error) {
         app.showError('Failed to load user data');
+    } finally {
+        app.hideLoading();
     }
 }
 
 // ============================================
-// Save User
+// Save User (Role Update)
 // ============================================
 function setupUserForm() {
     document.getElementById('user-form')?.addEventListener('submit', async function(e) {
@@ -164,34 +187,25 @@ function setupUserForm() {
 }
 
 async function saveUser() {
-    const userId = document.getElementById('user-id').value;
-    const userData = {
-        firstName: document.getElementById('user-firstName').value.trim(),
-        lastName: document.getElementById('user-lastName').value.trim(),
-        email: document.getElementById('user-email').value.trim(),
-        username: document.getElementById('user-username').value.trim(),
-        role: document.getElementById('user-role').value,
-        enabled: document.getElementById('user-enabled').checked
-    };
+    const userId = document.getElementById('user-id')?.value;
+    const role = document.getElementById('user-role')?.value;
+    
+    if (!userId) {
+        app.showError('User creation via admin panel not supported. Users must register.');
+        return;
+    }
     
     try {
         app.showLoading();
         
-        let response;
-        if (userId) {
-            // Update existing user
-            // response = await ajax.put(`/api/admin/users/${userId}`, userData);
-            response = await ajax.mockResponse({ success: true, message: 'User updated' });
-        } else {
-            // Create new user
-            // response = await ajax.post('/api/admin/users', userData);
-            response = await ajax.mockResponse({ success: true, message: 'User created' });
-        }
+        const response = await ajax.put(`/api/admin/users/${userId}/role`, { role: role });
         
         if (response.success) {
-            app.showSuccess(userId ? 'User updated successfully!' : 'User created successfully!');
+            app.showSuccess(response.message || 'User role updated successfully!');
             closeUserModal();
             loadUsers(currentPage, searchQuery);
+        } else {
+            app.showError(response.message || 'Failed to update user');
         }
     } catch (error) {
         app.showError('Failed to save user');
@@ -211,14 +225,13 @@ window.toggleUserStatus = async function(userId) {
     try {
         app.showLoading();
         
-        // TODO: Replace with actual API call
-        // const response = await ajax.put(`/api/admin/users/${userId}/toggle-status`);
-        
-        const response = await ajax.mockResponse({ success: true });
+        const response = await ajax.put(`/api/admin/users/${userId}/toggle-status`);
         
         if (response.success) {
-            app.showSuccess('User status updated');
+            app.showSuccess(response.message || 'User status updated');
             loadUsers(currentPage, searchQuery);
+        } else {
+            app.showError(response.message || 'Failed to update user status');
         }
     } catch (error) {
         app.showError('Failed to update user status');
@@ -232,14 +245,13 @@ window.deleteUser = function(userId) {
         try {
             app.showLoading();
             
-            // TODO: Replace with actual API call
-            // const response = await ajax.delete(`/api/admin/users/${userId}`);
-            
-            const response = await ajax.mockResponse({ success: true });
+            const response = await ajax.delete(`/api/admin/users/${userId}`);
             
             if (response.success) {
-                app.showSuccess('User deleted successfully');
+                app.showSuccess(response.message || 'User deleted successfully');
                 loadUsers(currentPage, searchQuery);
+            } else {
+                app.showError(response.message || 'Failed to delete user');
             }
         } catch (error) {
             app.showError('Failed to delete user');
@@ -268,34 +280,6 @@ function updatePagination(totalPages, currentPage) {
     const pageInfo = document.getElementById('page-info');
     
     if (prevBtn) prevBtn.disabled = currentPage === 1;
-    if (nextBtn) nextBtn.disabled = currentPage === totalPages;
+    if (nextBtn) nextBtn.disabled = currentPage >= totalPages;
     if (pageInfo) pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
-}
-
-// ============================================
-// Mock Data Generator
-// ============================================
-function generateMockUsers(page, search) {
-    const users = [];
-    const roles = ['USER', 'ADMIN', 'MANAGER'];
-    
-    for (let i = 0; i < usersPerPage; i++) {
-        const id = (page - 1) * usersPerPage + i + 1;
-        users.push({
-            id: id,
-            firstName: `User${id}`,
-            lastName: `Test`,
-            email: `user${id}@example.com`,
-            username: `user${id}`,
-            role: roles[Math.floor(Math.random() * roles.length)],
-            enabled: Math.random() > 0.3,
-            createdAt: new Date(Date.now() - Math.random() * 10000000000).toISOString()
-        });
-    }
-    
-    return {
-        users: users,
-        totalPages: 5,
-        currentPage: page
-    };
 }
